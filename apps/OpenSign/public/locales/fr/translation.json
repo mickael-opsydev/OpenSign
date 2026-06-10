@@ -397,6 +397,7 @@
   "otp-verification": "Vérification OTP",
   "enter-otp": "Entrez OTP",
   "verify": "Vérifier",
+  "otp-sent-to": "Code envoyé au",
   "verify-email-1": "Vérifier l'e-mail",
   "resend": "Renvoyer",
   "contact-details": "Coordonnées",
@@ -1559,5 +1560,18 @@
   "attach-all-role-to-signer": "Veuillez attribuer tous les rôles au signataire.",
   "upgrade-to-edit": "Mettre à niveau pour modifier",
   "hide-live-chat-for-signers": "Masquer le chat en direct pour les signataires",
-  "hide-live-chat-for-signers-help": "Lorsqu'activé, les widgets de chat en direct seront masqués pour les signataires sur les pages de signature."
+  "hide-live-chat-for-signers-help": "Lorsqu'activé, les widgets de chat en direct seront masqués pour les signataires sur les pages de signature.",
+  "phone-locked": "Le numéro de téléphone est défini par votre administrateur. Contactez-le pour le modifier.",
+  "invalid-phone-format": "Veuillez sélectionner un indicatif pays et saisir un numéro valide (ex. +33612345678)",
+  "change-phone": "Changer de numéro de téléphone",
+  "change-phone-password-help": "Veuillez saisir votre mot de passe actuel pour vérifier votre identité.",
+  "current-password": "Mot de passe actuel",
+  "next": "Suivant",
+  "change-phone-new-help": "Saisissez votre nouveau numéro de téléphone. Un SMS avec un code de vérification sera envoyé.",
+  "country-code": "Indicatif pays",
+  "confirm": "Confirmer",
+  "change-phone-email-sent": "Un email de confirmation a été envoyé à votre adresse. Si vous n'êtes pas à l'origine de ce changement, veuillez contacter votre administrateur immédiatement.",
+  "not-set": "Non défini",
+  "current": "Actuel",
+  "change": "Modifier"
 }

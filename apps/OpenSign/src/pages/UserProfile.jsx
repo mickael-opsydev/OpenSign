@@ -21,6 +21,7 @@ import ModalUi from "../primitives/ModalUi";
 import Loader from "../primitives/Loader";
 import { useTranslation } from "react-i18next";
 import SelectLanguage from "../components/pdf/SelectLanguage";
+import CountryCodeSelect from "../components/CountryCodeSelect";
 
 function UserProfile() {
   const navigate = useNavigate();
@@ -52,6 +53,15 @@ function UserProfile() {
   const [isdeleteModal, setIsdeleteModal] = useState(false);
   const [deleteUserRes, setDeleteUserRes] = useState("");
   const [isDelLoader, setIsDelLoader] = useState(false);
+  const [isPhoneChangeModal, setIsPhoneChangeModal] = useState(false);
+  const [changeStep, setChangeStep] = useState(1);
+  const [changePassword, setChangePassword] = useState("");
+  const [newPhone, setNewPhone] = useState("");
+  const [newCountryCode, setNewCountryCode] = useState("");
+  const [changeOtp, setChangeOtp] = useState("");
+  const [changeOtpLoader, setChangeOtpLoader] = useState(false);
+  const [changePhoneSentOtp, setChangePhoneSentOtp] = useState(false);
+  const [changePhoneMsg, setChangePhoneMsg] = useState("");
   useEffect(() => {
     getUserDetail();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -82,48 +92,41 @@ function UserProfile() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    let phn = Phone,
-      res = "";
-    if (!res) {
-      setIsLoader(true);
-      try {
-        const userQuery = Parse.Object.extend("_User");
-        const query = new Parse.Query(userQuery);
-        await query.get(UserProfile.objectId).then((object) => {
-          object.set("name", name);
-          object.set("ProfilePic", Image);
-          object.set("phone", phn || "");
-          object.save().then(
-            async (response) => {
-              if (response) {
-                let res = response.toJSON();
-                let rr = JSON.stringify(res);
-                localStorage.setItem("UserInformation", rr);
-                SetName(res.name);
-                SetPhone(res?.phone || "");
-                setImage(res.ProfilePic);
-                localStorage.setItem("username", res.name);
-                localStorage.setItem("profileImg", res.ProfilePic);
-                await updateExtUser({
-                  Name: res.name,
-                  Phone: res?.phone || ""
-                });
-                alert(t("profile-update-alert"));
-                setEditMode(false);
-                setIsLoader(false);
-                //navigate("/dashboard/35KBoSgoAK");
-              }
-            },
-            (error) => {
-              alert(t("something-went-wrong-mssg"));
-              console.error("Error while updating tour", error);
+    let res = "";
+    setIsLoader(true);
+    try {
+      const userQuery = Parse.Object.extend("_User");
+      const query = new Parse.Query(userQuery);
+      await query.get(UserProfile.objectId).then((object) => {
+        object.set("name", name);
+        object.set("ProfilePic", Image);
+        object.save().then(
+          async (response) => {
+            if (response) {
+              let res = response.toJSON();
+              let rr = JSON.stringify(res);
+              localStorage.setItem("UserInformation", rr);
+              SetName(res.name);
+              setImage(res.ProfilePic);
+              localStorage.setItem("username", res.name);
+              localStorage.setItem("profileImg", res.ProfilePic);
+              await updateExtUser({
+                Name: res.name,
+              });
+              alert(t("profile-update-alert"));
+              setEditMode(false);
               setIsLoader(false);
             }
-          );
-        });
-      } catch (error) {
-        console.log("err", error);
-      }
+          },
+          (error) => {
+            alert(t("something-went-wrong-mssg"));
+            console.error("Error while updating tour", error);
+            setIsLoader(false);
+          }
+        );
+      });
+    } catch (error) {
+      console.log("err", error);
     }
   };
 
@@ -257,6 +260,91 @@ function UserProfile() {
     alert(t("otp-sent-alert"));
   };
 
+  const handleVerifyPassword = async () => {
+    setChangeOtpLoader(true);
+    try {
+      const res = await Parse.Cloud.run("VerifyPassword", { password: changePassword });
+      if (res !== "Password verified") {
+        alert(res);
+        setChangeOtpLoader(false);
+        return;
+      }
+      setChangeStep(2);
+      setChangeOtpLoader(false);
+    } catch (error) {
+      setChangeOtpLoader(false);
+      alert(error.message);
+    }
+  };
+
+  const handleSendChangeOTP = async () => {
+    const fullPhone = newCountryCode + newPhone;
+    if (!fullPhone || fullPhone === "+") {
+      alert(t("input-required"));
+      return;
+    }
+    setChangeOtpLoader(true);
+    try {
+      const res = await Parse.Cloud.run("SendSMSOTP", { phone: fullPhone });
+      if (res !== "Otp send") {
+        alert(res);
+        setChangeOtpLoader(false);
+        return;
+      }
+      setChangePhoneSentOtp(true);
+      setChangeOtpLoader(false);
+    } catch (error) {
+      setChangeOtpLoader(false);
+      alert(error.message);
+    }
+  };
+  const handleChangePhone = async (e) => {
+    e.preventDefault();
+    setChangeOtpLoader(true);
+    try {
+      const fullPhone = newCountryCode + newPhone;
+      const res = await Parse.Cloud.run("ChangePhoneNumber", {
+        currentPassword: changePassword,
+        newPhone: fullPhone,
+        otp: changeOtp,
+      });
+      if (res === "Phone number updated successfully") {
+        SetPhone(fullPhone);
+        const stored = JSON.parse(localStorage.getItem("UserInformation") || "{}");
+        stored.phone = fullPhone;
+        localStorage.setItem("UserInformation", JSON.stringify(stored));
+        setChangeStep(3);
+        setChangePhoneMsg(res);
+      } else {
+        alert(res);
+      }
+    } catch (error) {
+      alert(error.message);
+    } finally {
+      setChangeOtpLoader(false);
+    }
+  };
+  const closePhoneChangeModal = () => {
+    setIsPhoneChangeModal(false);
+    setChangeStep(1);
+    setChangePassword("");
+    setNewPhone("");
+    setNewCountryCode("");
+    setChangeOtp("");
+    setChangePhoneSentOtp(false);
+    setChangePhoneMsg("");
+  };
+  const openPhoneChangeModal = () => {
+    setChangeStep(1);
+    setChangePassword("");
+    setNewPhone("");
+    setNewCountryCode("");
+    setChangeOtp("");
+    setChangePhoneSentOtp(false);
+    setChangePhoneMsg("");
+    setIsPhoneChangeModal(true);
+  };
+
   const handleCancel = () => {
     setEditMode(false);
     SetName(localStorage.getItem("username"));
@@ -355,22 +443,18 @@ function UserProfile() {
                   <span>{localStorage.getItem("username")}</span>
                 )}
               </li>
-              <li
-                className={`flex justify-between items-center border-b-[1px] border-gray-300 break-all ${
-                  editmode ? "py-1.5" : "py-2"
-                }`}
-              >
-                <span className="font-semibold">{t("phone")}:</span>{" "}
-                {editmode ? (
-                  <input
-                    type="text"
-                    className="op-input op-input-bordered op-input-sm w-[180px] focus:outline-none hover:border-base-content text-sm"
-                    onChange={(e) => SetPhone(e.target.value)}
-                    value={Phone}
-                  />
-                ) : (
-                  <span>{UserProfile && UserProfile.phone}</span>
-                )}
+              <li className="flex justify-between items-center border-b-[1px] border-gray-300 py-2 break-all">
+                <span className="font-semibold">{t("phone")}:</span>
+                <span className="flex items-center gap-2">
+                  <span>{UserProfile && UserProfile.phone || t("not-set")}</span>
+                  <button
+                    type="button"
+                    className="op-btn op-btn-ghost op-btn-xs"
+                    onClick={openPhoneChangeModal}
+                  >
+                    {t("change")}
+                  </button>
+                </span>
               </li>
               <li className="flex justify-between items-center border-b-[1px] border-gray-300 py-2 break-all">
                 <span
@@ -519,6 +603,98 @@ function UserProfile() {
                     </form>
                   )}
                 </>
+              )}
+            </ModalUi>
+          )}
+          {isPhoneChangeModal && (
+            <ModalUi
+              isOpen
+              title={t("change-phone")}
+              handleClose={closePhoneChangeModal}
+            >
+              {changeStep === 1 && (
+                <div className="px-6 py-3 text-base-content">
+                  <p className="mb-1 text-sm">
+                    {t("current")}: <strong>{UserProfile?.phone || t("not-set")}</strong>
+                  </p>
+                  <p className="mb-3 text-sm">{t("change-phone-password-help")}</p>
+                  <input
+                    type="password"
+                    className="w-full op-input op-input-bordered op-input-sm focus:outline-none hover:border-base-content text-xs mb-3"
+                    placeholder={t("current-password")}
+                    value={changePassword}
+                    onChange={(e) => setChangePassword(e.target.value)}
+                  />
+                  <button
+                    className="op-btn op-btn-primary"
+                    onClick={handleVerifyPassword}
+                    disabled={changeOtpLoader || !changePassword}
+                  >
+                    {changeOtpLoader ? <Loader /> : t("next")}
+                  </button>
+                </div>
+              )}
+              {changeStep === 2 && (
+                <div className="px-6 py-3 text-base-content">
+                  <p className="mb-1 text-sm">
+                    {t("current")}: <strong>{UserProfile?.phone || t("not-set")}</strong>
+                  </p>
+                  <p className="mb-3 text-sm">{t("change-phone-new-help")}</p>
+                  <div className="flex gap-2 items-start mb-3">
+                    <CountryCodeSelect
+                      value={newCountryCode}
+                      onChange={setNewCountryCode}
+                    />
+                    <input
+                      type="tel"
+                      className="flex-1 op-input op-input-bordered op-input-sm focus:outline-none hover:border-base-content text-xs"
+                      placeholder={t("otp-phone-input")}
+                      value={newPhone}
+                      onChange={(e) => setNewPhone(e.target.value)}
+                    />
+                  </div>
+                  {!changePhoneSentOtp ? (
+                    <button
+                      className="op-btn op-btn-primary"
+                      onClick={handleSendChangeOTP}
+                      disabled={changeOtpLoader || !newCountryCode || !newPhone}
+                    >
+                      {changeOtpLoader ? <Loader /> : t("send-otp")}
+                    </button>
+                  ) : (
+                    <form onSubmit={handleChangePhone}>
+                      <label className="mb-2">{t("enter-otp")}</label>
+                      <input
+                        required
+                        type="tel"
+                        pattern="[0-9]{4}"
+                        className="w-full op-input op-input-bordered op-input-sm focus:outline-none hover:border-base-content text-xs mb-3"
+                        placeholder={t("otp-sms-placeholder")}
+                        value={changeOtp}
+                        onChange={(e) => setChangeOtp(e.target.value)}
+                      />
+                      <button
+                        type="submit"
+                        className="op-btn op-btn-primary"
+                        disabled={changeOtpLoader}
+                      >
+                        {changeOtpLoader ? <Loader /> : t("confirm")}
+                      </button>
+                    </form>
+                  )}
+                </div>
+              )}
+              {changeStep === 3 && (
+                <div className="px-6 py-3 text-base-content">
+                  <p className="text-sm mb-3">{changePhoneMsg}</p>
+                  <p className="text-xs text-gray-500 mb-3">{t("change-phone-email-sent")}</p>
+                  <button
+                    className="op-btn op-btn-primary"
+                    onClick={closePhoneChangeModal}
+                  >
+                    {t("close")}
+                  </button>
+                </div>
               )}
             </ModalUi>
           )}

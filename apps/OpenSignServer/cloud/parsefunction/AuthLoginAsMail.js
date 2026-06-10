@@ -2,92 +2,120 @@ import axios from 'axios';
 import { cloudServerUrl, serverAppId } from '../../Utils.js';
 async function AuthLoginAsMail(request) {
   try {
-    //function for login user using user objectId without touching user's password
-    const serverUrl = cloudServerUrl; //process.env.SERVER_URL;
+    const serverUrl = cloudServerUrl;
     const APPID = serverAppId;
     const masterKEY = process.env.MASTER_KEY;
 
-    let otpN = request.params.otp;
-    let otp = parseInt(otpN);
-    let email = request.params.email;
+    const otpN = request.params.otp;
+    const otp = parseInt(otpN);
+    const email = request.params.email;
+    const phone = request.params.phone;
 
-    let message;
-    //checking otp is correct or not which already save in defaultdata_Otp class
     const checkOtp = new Parse.Query('defaultdata_Otp');
-    checkOtp.equalTo('Email', email);
+    if (email) {
+      checkOtp.equalTo('Email', email);
+    } else if (phone) {
+      checkOtp.equalTo('Phone', phone);
+    } else {
+      return 'Email or phone is required';
+    }
     const res = await checkOtp.first({ useMasterKey: true });
 
     if (res !== undefined) {
-      let resOtp = res.get('OTP');
+      const resOtp = res.get('OTP');
 
       if (resOtp === otp) {
-        var result = await getToken(request);
-        if (result && !result?.emailVerified) {
-          const userQuery = new Parse.Query(Parse.User);
-          const user = await userQuery.get(result?.objectId, {
-            sessionToken: result.sessionToken,
-          });
-          // Update the emailVerified field to true
-          user.set('emailVerified', true);
-          // Save the user object
-          const res = await user.save(null, { useMasterKey: true });
-          if (res) {
-            return result;
-          } else {
-            reject('user not found!');
+        try {
+          const result = await getToken();
+          if (email && !result?.emailVerified) {
+            const userQuery = new Parse.Query(Parse.User);
+            const user = await userQuery.get(result?.objectId, {
+              sessionToken: result.sessionToken,
+            });
+            user.set('emailVerified', true);
+            const saveRes = await user.save(null, { useMasterKey: true });
+            if (saveRes) {
+              return result;
+            } else {
+              return 'user not found!';
+            }
           }
-        } else {
           return result;
+        } catch (err) {
+          return 'user not found!';
         }
 
-        async function getToken(request) {
-          return new Promise(function (resolve, reject) {
-            var query = new Parse.Query(Parse.User);
+        async function getToken() {
+          const query = new Parse.Query(Parse.User);
+          if (email) {
             query.equalTo('email', email);
-            query
-              .first({ useMasterKey: true })
-              .then(user => {
-                //call loginAs function to use login method passing user objectId as a userId
+          } else if (phone) {
+            query.equalTo('phone', phone);
+          }
+          let user = await query.first({ useMasterKey: true });
 
-                const url = `${serverUrl}/loginAs`;
-                axios({
-                  method: 'POST',
-                  url: url,
-                  headers: {
-                    'Content-Type': 'application/json;charset=utf-8',
-                    'X-Parse-Application-Id': APPID,
-                    'X-Parse-Master-Key': masterKEY,
-                  },
-                  params: {
-                    userId: user.id,
-                  },
-                })
-                  .then(function (res) {
-                    // console.log(res.data)
-                    if (res.data) {
-                      resolve(res.data);
-                    } else {
-                      reject('user not found!');
-                    }
-                  })
-                  .catch(err => {
-                    reject('user not found!');
-                  });
+          if (!user && phone) {
+            user = await createPhoneUser(phone);
+          }
 
-                // user couldn't find lets sign up!
-              })
-              .catch(() => {
-                reject('user not found!');
-              });
+          if (!user) {
+            throw new Error('user not found');
+          }
+
+          const url = `${serverUrl}/loginAs`;
+          const loginRes = await axios({
+            method: 'POST',
+            url: url,
+            timeout: 10000,
+            headers: {
+              'Content-Type': 'application/json;charset=utf-8',
+              'X-Parse-Application-Id': APPID,
+              'X-Parse-Master-Key': masterKEY,
+            },
+            params: {
+              userId: user.id,
+            },
           });
+
+          if (!loginRes.data || !loginRes.data.sessionToken) {
+            throw new Error('user not found');
+          }
+
+          return loginRes.data;
+        }
+
+        async function createPhoneUser(phone) {
+          const username = `phone_${phone.replace(/[^+\d]/g, '')}`;
+          const existingQuery = new Parse.Query(Parse.User);
+          existingQuery.equalTo('username', username);
+          const existing = await existingQuery.first({ useMasterKey: true });
+          if (existing) return existing;
+          const user = new Parse.User();
+          user.set('username', username);
+          user.set('phone', phone);
+          user.set('password', Math.random().toString(36).slice(2));
+          const saved = await user.signUp(null, { useMasterKey: true });
+          try {
+            const extUser = new Parse.Object('contracts_Users');
+            extUser.set('UserId', saved);
+            extUser.set('Email', phone);
+            extUser.set('Name', username);
+            extUser.set('Phone', phone);
+            const acl = new Parse.ACL();
+            acl.setPublicReadAccess(true);
+            acl.setPublicWriteAccess(true);
+            extUser.setACL(acl);
+            await extUser.save(null, { useMasterKey: true });
+          } catch (err) {
+            console.log('err creating contracts_Users for phone user', err);
+          }
+          return saved;
         }
       } else {
-        message = `Invalid Otp`;
-        return message;
+        return 'Invalid Otp';
       }
     } else {
-      message = 'user not found!';
-      return message;
+      return 'user not found!';
     }
   } catch (err) {
     console.log('err in Auth');

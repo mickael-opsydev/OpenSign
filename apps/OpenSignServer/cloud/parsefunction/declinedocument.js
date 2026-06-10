@@ -61,8 +61,9 @@ export default async function declinedocument(request) {
     if (updateDoc) {
       const _doc = JSON.parse(JSON.stringify(updateDoc));
       const isEnableOTP = updateDoc?.get('IsEnableOTP') || false;
+      const OTPType = updateDoc?.get('OTPType') || '';
       const isCreator = _doc?.CreatedBy?.objectId === userId;
-      if (!isEnableOTP) {
+      if (!isEnableOTP && OTPType !== 'sms' && OTPType !== 'both') {
         updateDoc.set('IsDeclined', true);
         updateDoc.set('DeclineReason', reason);
         updateDoc.set('DeclineBy', declineBy);

@@ -15,6 +15,8 @@ export default async function createDocumentFromApp(request) {
   const SendinOrder = doc.SendinOrder !== undefined ? doc.SendinOrder : false;
   const SendInOrderStrict = doc.SendInOrderStrict !== undefined ? !!doc.SendInOrderStrict : false;
   const IsEnableOTP = doc?.IsEnableOTP !== undefined ? doc?.IsEnableOTP : false;
+  const OTPType =
+    doc?.OTPType !== undefined ? doc?.OTPType : IsEnableOTP ? 'email' : 'none';
   const IsTourEnabled = doc?.IsTourEnabled !== undefined ? doc?.IsTourEnabled : false;
   const AllowModifications =
     doc?.AllowModifications !== undefined ? doc?.AllowModifications : false;
@@ -44,6 +46,7 @@ export default async function createDocumentFromApp(request) {
     docCls.set('SendinOrder', SendinOrder);
     docCls.set('SendInOrderStrict', SendInOrderStrict);
     docCls.set('IsEnableOTP', IsEnableOTP);
+    docCls.set('OTPType', OTPType);
     docCls.set('IsTourEnabled', IsTourEnabled);
     docCls.set('AllowModifications', AllowModifications);
     docCls.set('AutomaticReminders', AutomaticReminders);

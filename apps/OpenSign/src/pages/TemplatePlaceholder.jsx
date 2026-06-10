@@ -978,6 +978,7 @@ const TemplatePlaceholder = () => {
           RemindOnceInEvery: parseInt(pdfDetails[0]?.RemindOnceInEvery),
           NextReminderDate: pdfDetails[0]?.NextReminderDate,
           IsEnableOTP: pdfDetails[0]?.IsEnableOTP === true ? true : false,
+          OTPType: pdfDetails[0]?.OTPType || (pdfDetails[0]?.IsEnableOTP ? "email" : "none"),
           AllowModifications: pdfDetails[0]?.AllowModifications || false,
           IsTourEnabled: pdfDetails[0]?.IsTourEnabled === true ? true : false,
           URL: pdfUrl,
@@ -1390,6 +1391,7 @@ const TemplatePlaceholder = () => {
         SendinOrder: updateTemplate?.[0]?.SendinOrder || false,
         AutomaticReminders: updateTemplate?.[0]?.AutomaticReminders,
         IsEnableOTP: updateTemplate?.[0]?.IsEnableOTP === true ? true : false,
+        OTPType: updateTemplate?.[0]?.OTPType || (updateTemplate?.[0]?.IsEnableOTP ? "email" : "none"),
         IsTourEnabled:
           updateTemplate?.[0]?.IsTourEnabled === true ? true : false,
         NotifyOnSignatures:

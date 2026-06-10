@@ -1853,6 +1853,7 @@ function PlaceHolderSign() {
         SendinOrder: updateDocument?.[0]?.SendinOrder || false,
         AutomaticReminders: updateDocument?.[0]?.AutomaticReminders,
         IsEnableOTP: updateDocument?.[0]?.IsEnableOTP === true ? true : false,
+        OTPType: updateDocument?.[0]?.OTPType || (updateDocument?.[0]?.IsEnableOTP ? "email" : "none"),
         IsTourEnabled:
           updateDocument?.[0]?.IsTourEnabled === true ? true : false,
         NotifyOnSignatures:

@@ -1001,6 +1001,7 @@ export const createDocument = async (
       AutomaticReminders: Doc?.AutomaticReminders || false,
       RemindOnceInEvery: parseInt(Doc?.RemindOnceInEvery || 5),
       IsEnableOTP: Doc?.IsEnableOTP || false,
+      OTPType: Doc?.OTPType || (Doc?.IsEnableOTP ? "email" : "none"),
       SendInOrderStrict: Doc?.SendInOrderStrict || false,
       IsTourEnabled: Doc?.IsTourEnabled || false,
       AllowModifications: Doc?.AllowModifications || false,

@@ -24,6 +24,7 @@ function GuestLogin() {
   const [email, setEmail] = useState(
     userMail?.toLowerCase()?.replace(/\s/g, "")
   );
+  const [phone, setPhone] = useState("");
   const [OTP, setOTP] = useState("");
   const [EnterOTP, setEnterOtp] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -43,6 +44,7 @@ function GuestLogin() {
     company: ""
   });
   const [isOptionalDetails, setIsOptionalDetails] = useState(false);
+  const [otpType, setOtpType] = useState("email");
 
   const navigateToDoc = async (docId, contactId) => {
     try {
@@ -50,6 +52,8 @@ function GuestLogin() {
         docId: docId
       });
       if (!docDetails.error) {
+        const otpType = docDetails?.OTPType || (docDetails?.IsEnableOTP ? "email" : "none");
+        setOtpType(otpType);
         if (sendmail === "false") {
           navigate(
             `/load/recipientSignPdf/${docId}/${contactId}?sendmail=${sendmail}`
@@ -57,46 +61,39 @@ function GuestLogin() {
         } else {
           navigate(`/load/recipientSignPdf/${docId}/${contactId}`);
         }
-        return true;
+        return { isOtpEnabled: otpType !== "none", otpType };
       } else {
         setIsLoading({ isLoad: false });
-        return false;
+        return { isOtpEnabled: false, otpType: "none" };
       }
     } catch (err) {
       console.log("err while getting doc", err);
-      return false;
+      return { isOtpEnabled: false, otpType: "none" };
     }
   };
 
   useEffect(() => {
     handleServerUrl();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-
-  //function generate serverUrl and parseAppId from url and save it in local storage
   const handleServerUrl = async () => {
       setAppLogo(logo);
     const favicon = localStorage.getItem("favicon");
 
-    localStorage.clear(); // Clears everything
+    localStorage.clear();
     localStorage.setItem("favicon", favicon);
     localStorage.setItem(
       "appname",
         "OpenSign™"
     );
-    //save isGuestSigner true in local to handle login flow header in mobile view
     localStorage.setItem("isGuestSigner", true);
     saveLanguageInLocal(i18n);
     const parseId = appInfo.appId;
     const newServer = `${appInfo.baseUrl}/`;
     localStorage.setItem("baseUrl", newServer);
     localStorage.setItem("parseAppId", parseId);
-    //this condition is used decode base64 to string and get userEmail,documentId, contactBoookId data.
     if (!id) {
-      //`atob` function is used to decode base64
       const decodebase64 = atob(base64url);
-      //split url in array from '/'
       const checkSplit = decodebase64.split("/");
       setDocumentId(checkSplit[0]);
       setContact((prev) => ({
@@ -129,7 +126,6 @@ function GuestLogin() {
     }
   };
 
-  //send email OTP function
   const SendOtp = async () => {
     setLoading(true);
     setEmail(email?.toLowerCase()?.replace(/\s/g, ""));
@@ -149,12 +145,33 @@ function GuestLogin() {
     }
   };
 
-  const handleSendOTPBtn = async (e) => {
-    e.preventDefault();
-    await SendOtp();
+  const SendSmsOtp = async () => {
+    setLoading(true);
+    try {
+      const params = {
+        phone: phone,
+        docId: documentId,
+      };
+      const Otp = await Parse.Cloud.run("SendSMSOTP", params);
+      if (Otp) {
+        setLoading(false);
+        setEnterOtp(true);
+      }
+    } catch (error) {
+      alert(t("something-went-wrong-mssg"));
+      setLoading(false);
+    }
   };
 
-  //verify OTP send on via email
+  const handleSendOTPBtn = async (e) => {
+    e.preventDefault();
+    if (otpType === "sms") {
+      await SendSmsOtp();
+    } else {
+      await SendOtp();
+    }
+  };
+
   const VerifyOTP = async (e) => {
     e.preventDefault();
     const serverUrl =
@@ -169,10 +186,15 @@ function GuestLogin() {
           "Content-Type": "application/json",
           "X-Parse-Application-Id": parseId
         };
-        let body = {
-          email: email?.toLowerCase()?.replace(/\s/g, ""),
-          otp: OTP
-        };
+        let body;
+        if (otpType === "sms") {
+          body = { phone: phone, otp: OTP };
+        } else {
+          body = {
+            email: email?.toLowerCase()?.replace(/\s/g, ""),
+            otp: OTP
+          };
+        }
         let user = await axios.post(url, body, { headers: headers });
         if (user.data.result === "Invalid Otp") {
           alert(t("invalid-otp"));
@@ -217,7 +239,6 @@ function GuestLogin() {
     }
   };
 
-
   const handleUserData = async (e) => {
     e.preventDefault();
     if (!emailRegex.test(contact.email?.toLowerCase()?.replace(/\s/g, ""))) {
@@ -231,14 +252,10 @@ function GuestLogin() {
           params
         );
         setContactId(linkContactRes.contactId);
-        const IsEnableOTP = await navigateToDoc(
+        const result = await navigateToDoc(
           documentId,
           linkContactRes.contactId
         );
-        if (!IsEnableOTP) {
-          setEnterOtp(true);
-          await SendOtp();
-        }
       } catch (err) {
         setLoading(false);
         alert(t("something-went-wrong-mssg"));
@@ -260,8 +277,6 @@ function GuestLogin() {
 
   return (
     <div>
-
-      {/* OTP Verification Modal */}
       {EnterOTP && (
         <ModalUi
           isOpen
@@ -285,7 +300,7 @@ function GuestLogin() {
                   type="tel"
                   pattern="[0-9]{4}"
                   className="w-full op-input op-input-bordered op-input-sm focus:outline-none hover:border-base-content text-xs"
-                  placeholder={t("otp-placeholder")}
+                  placeholder={otpType === "sms" ? t("otp-sms-placeholder") : t("otp-placeholder")}
                   value={OTP}
                   onChange={(e) => setOTP(e.target.value)}
                 />
@@ -326,26 +341,39 @@ function GuestLogin() {
                 <legend className="text-[12px] text-[#878787] mt-2 mb-1">
                   {t("get-otp-alert")}
                 </legend>
-                <div className="p-[20px] outline outline-1 outline-slate-300/50 my-2 op-card shadow-md">
-                  <input
-                    type="email"
-                    name="email"
-                    value={email}
-                    className="op-input op-input-bordered op-input-sm focus:outline-none hover:border-base-content w-full disabled:text-[#5c5c5c] text-xs"
-                    disabled
-                  />
-                </div>
+                {otpType === "sms" ? (
+                  <div className="p-[20px] outline outline-1 outline-slate-300/50 my-2 op-card shadow-md">
+                    <input
+                      type="tel"
+                      name="phone"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      className="op-input op-input-bordered op-input-sm focus:outline-none hover:border-base-content w-full text-xs"
+                      placeholder={t("otp-phone-input")}
+                    />
+                  </div>
+                ) : (
+                  <div className="p-[20px] outline outline-1 outline-slate-300/50 my-2 op-card shadow-md">
+                    <input
+                      type="email"
+                      name="email"
+                      value={email}
+                      className="op-input op-input-bordered op-input-sm focus:outline-none hover:border-base-content w-full disabled:text-[#5c5c5c] text-xs"
+                      disabled
+                    />
+                  </div>
+                )}
                 <div className="mt-3">
                   <button
                     className="op-btn op-btn-primary flex items-center"
                     onClick={(e) => {
                       e.preventDefault();
-                        SendOtp();
+                      handleSendOTPBtn(e);
                     }}
                     disabled={loading}
                   >
-                        <i className="fa-light fa-message-sms mr-2"></i>
-                        {loading ? t("loading") : t("get-verification-code")}
+                    <i className="fa-light fa-message-sms mr-2"></i>
+                    {loading ? t("loading") : t("get-verification-code")}
                   </button>
                 </div>
               </div>

@@ -12,6 +12,7 @@ import {
   PDFDict,
 } from 'pdf-lib';
 import { parseUploadFile } from './utils/fileUtils.js';
+import TwilioProvider from './cloud/smsProviders/TwilioProvider.js';
 
 dotenv.config({ quiet: true });
 
@@ -144,6 +145,12 @@ export const smtpsecure = process.env.SMTP_PORT && process.env.SMTP_PORT !== '46
 export const smtpenable =
   process.env.SMTP_ENABLE && process.env.SMTP_ENABLE.toLowerCase() === 'true' ? true : false;
 export const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const smsProviderName = process.env.SMS_PROVIDER ? process.env.SMS_PROVIDER.toLowerCase() : '';
+export let smsProvider = null;
+if (smsProviderName === 'twilio') {
+  smsProvider = new TwilioProvider();
+}
 
 // `generateId` is used to unique Id for fileAdapter
 export function generateId(length) {

@@ -50,6 +50,8 @@ import DropdownWidgetOption from "../components/pdf/DropdownWidgetOption";
 import { useDispatch, useSelector } from "react-redux";
 import TextFontSetting from "../components/pdf/TextFontSetting";
 import VerifyEmail from "../components/pdf/VerifyEmail";
+import VerifySMSOTP from "../components/pdf/VerifySMSOTP";
+import { hasValidCountryCode } from "../components/CountryCodeSelect";
 import PdfTools from "../components/pdf/PdfTools";
 import { useTranslation } from "react-i18next";
 import RotateAlert from "../components/RotateAlert";
@@ -120,25 +122,16 @@ function SignYourSelf() {
   const [containerWH, setContainerWH] = useState({ width: 0, height: 0 });
   const [isPageCopy, setIsPageCopy] = useState(false);
   const [otpLoader, setOtpLoader] = useState(false);
-  const [showAlreadySignDoc, setShowAlreadySignDoc] = useState({
-    status: false
-  });
-  const [isTextSetting, setIsTextSetting] = useState(false);
-  const [currWidgetsDetails, setCurrWidgetsDetails] = useState({});
-  const [isCheckbox, setIsCheckbox] = useState(false);
-  const [isNameModal, setIsNameModal] = useState(false);
-  const [isCellsSetting, setIsCellsSetting] = useState(false);
-  const openNameModal = () => setIsNameModal(true);
-  const openCellsSettingModal = () => setIsCellsSetting(true);
-  const [pdfLoad, setPdfLoad] = useState(false);
-  const [isAlert, setIsAlert] = useState({ isShow: false, alertMessage: "" });
-  const [isDontShow, setIsDontShow] = useState(true);
-  const [isCompleted, setIsCompleted] = useState(false);
-  const [isCelebration, setIsCelebration] = useState(false);
-  const [pdfArrayBuffer, setPdfArrayBuffer] = useState("");
-  const [isEmailVerified, setIsEmailVerified] = useState(true);
+  const [smsPhoneReadOnly, setSmsPhoneReadOnly] = useState(false);
+  const [countryCode, setCountryCode] = useState("");
+  const [tourPageNum, setTourPageNum] = useState(0);
+  const [isEmailOTPVerified, setIsEmailOTPVerified] = useState(false);
   const [isVerifyModal, setIsVerifyModal] = useState(false);
   const [otp, setOtp] = useState("");
+  const [smsPhone, setSmsPhone] = useState("");
+  const [isSmsVerified, setIsSmsVerified] = useState(false);
+  const [smsVerifyModal, setSmsVerifyModal] = useState(false);
+  const [showSmsPhoneInput, setShowSmsPhoneInput] = useState(true);
   const [zoomPercent, setZoomPercent] = useState(0);
   const isSidebar = useSelector((state) => state.sidebar.isOpen);
   const [scale, setScale] = useState(1);
@@ -511,16 +504,15 @@ function SignYourSelf() {
         otp: otp,
         email: Parse.User.current().getEmail()
       });
-      if (resEmail?.message === "Email is verified.") {
-        setIsEmailVerified(true);
-        alert(t("Email-verified-alert-1"));
-      } else if (resEmail?.message === "Email is already verified.") {
-        setIsEmailVerified(true);
-        alert(t("Email-verified-alert-2"));
+      if (resEmail?.message === "Email is verified." || resEmail?.message === "Email is already verified.") {
+        setIsEmailOTPVerified(true);
+        setOtp("");
+        setIsVerifyModal(false);
+        setIsUiLoading(true);
+        await embedWidgetsData();
+        return;
       }
-      setOtp("");
-      setIsVerifyModal(false);
-      // handleRecipientSign();
+      throw new Error(t("invalid-otp"));
     } catch (error) {
       alert(error.message);
     } finally {
@@ -532,6 +524,67 @@ function SignYourSelf() {
     setIsVerifyModal(true);
     await handleSendOTP(Parse.User.current().getEmail());
   };
+
+  const handleSendSMSOTP = async () => {
+    setSmsVerifyModal(true);
+    setOtpLoader(true);
+    try {
+      const res = await Parse.Cloud.run("SendSMSOTP", { phone: smsPhone });
+      setOtpLoader(false);
+      setShowSmsPhoneInput(false);
+      return res;
+    } catch (error) {
+      setOtpLoader(false);
+      throw error;
+    }
+  };
+
+  const handleVerifySMSOTP = async (e) => {
+    e.preventDefault();
+    setOtpLoader(true);
+    try {
+      const serverUrl = localStorage.getItem("baseUrl");
+      const parseId = localStorage.getItem("parseAppId");
+      const res = await axios.post(
+        `${serverUrl}functions/AuthLoginAsMail`,
+        { phone: smsPhone, otp: otp },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            "X-Parse-Application-Id": parseId,
+          },
+        }
+      );
+      if (res.data.result === "Invalid Otp") {
+        throw new Error(t("invalid-otp"));
+      } else if (res.data.result === "user not found!") {
+        throw new Error(t("user-not-found"));
+      } else {
+        setIsSmsVerified(true);
+        setSmsVerifyModal(false);
+        setOtp("");
+        return;
+      }
+    } finally {
+      setOtpLoader(false);
+    }
+  };
+  useEffect(() => {
+    if (!isSmsVerified) return;
+    (async () => {
+      try {
+        await embedWidgetsData();
+      } catch (err) {
+        console.log("err after OTP sign", err);
+      }
+    })();
+  }, [isSmsVerified]);
+  const handleResendSMS = async (e) => {
+    e.preventDefault();
+    setOtp("");
+    setShowSmsPhoneInput(true);
+  };
+
   useEffect(() => {
     const timer = setTimeout(() => {
       if (
@@ -614,30 +667,49 @@ function SignYourSelf() {
   };
   //function for send placeholder's co-ordinate(x,y) position embed signature url or stamp url
   async function embedWidgetsData() {
-    //check current user email is verified or not
     const currentUser = JSON.parse(JSON.stringify(Parse.User.current()));
-    let isEmailVerified;
-    isEmailVerified = currentUser?.emailVerified;
     const isEnableOTP = pdfDetails?.[0]?.IsEnableOTP || false;
-    if (isEnableOTP) {
-      if (isEmailVerified) {
-        setIsEmailVerified(isEmailVerified);
+    const OTPType = pdfDetails?.[0]?.OTPType || (isEnableOTP ? "email" : "none");
+    const isEmailOTP = OTPType === "email" || OTPType === "both";
+    const isSMSOTP = OTPType === "sms" || OTPType === "both";
+    if (isEmailOTP) {
+      if (isEmailOTPVerified) {
+        setIsEmailOTPVerified(isEmailOTPVerified);
       } else {
-        try {
-          const userQuery = new Parse.Query(Parse.User);
-          const user = await userQuery.get(currentUser.objectId, {
-            sessionToken: localStorage.getItem("accesstoken")
-          });
-          if (user) {
-            isEmailVerified = user?.get("emailVerified");
-            setIsEmailVerified(isEmailVerified);
-          }
-        } catch (e) {
-          setHandleError(t("something-went-wrong-mssg"));
-        }
+        setIsUiLoading(false);
+        setIsVerifyModal(true);
+        await handleSendOTP(Parse.User.current().getEmail());
+        return;
       }
     }
-    if (!isEnableOTP || isEmailVerified) {
+    if (isSMSOTP) {
+      if (isSmsVerified) {
+        setIsSmsVerified(isSmsVerified);
+      } else {
+        let userPhone = currentUser?.phone || "";
+        if (!userPhone) {
+          try {
+            const userQuery = new Parse.Query(Parse.User);
+            const freshUser = await userQuery.get(currentUser?.objectId, {
+              sessionToken: localStorage.getItem("accesstoken")
+            });
+            if (freshUser) {
+              userPhone = freshUser.get("phone") || "";
+            }
+          } catch (err) {
+            console.log("err fetching user phone", err);
+          }
+        }
+        setSmsPhone(userPhone);
+        setSmsPhoneReadOnly(!!userPhone && hasValidCountryCode(userPhone));
+        setShowSmsPhoneInput(true);
+        setSmsVerifyModal(true);
+        setIsUiLoading(false);
+        return;
+      }
+    }
+    const canProceed = OTPType === "none" || (OTPType === "email" && isEmailOTPVerified) || (OTPType === "sms" && isSmsVerified) || (OTPType === "both" && isEmailOTPVerified && isSmsVerified);
+    if (canProceed) {
       let showAlert = false,
         widgetKey,
         tourPageNumber;
@@ -1313,7 +1385,7 @@ function SignYourSelf() {
                 <span className="text-[13px]">{t("loader")}</span>
               </div>
             )}
-            {!isEmailVerified && (
+            {isVerifyModal && !isEmailOTPVerified && (pdfDetails?.[0]?.OTPType === "email" || pdfDetails?.[0]?.OTPType === "both" || (pdfDetails?.[0]?.IsEnableOTP && !pdfDetails?.[0]?.OTPType)) && (
               <VerifyEmail
                 isVerifyModal={isVerifyModal}
                 setIsVerifyModal={setIsVerifyModal}
@@ -1323,6 +1395,24 @@ function SignYourSelf() {
                 otpLoader={otpLoader}
                 handleVerifyBtn={handleVerifyBtn}
                 handleResend={handleResend}
+              />
+            )}
+            {smsVerifyModal && !isSmsVerified && (
+              <VerifySMSOTP
+                isVerifyModal={!showSmsPhoneInput}
+                showPhoneInput={showSmsPhoneInput}
+                setIsVerifyModal={setSmsVerifyModal}
+                handleVerifySMSOTP={handleVerifySMSOTP}
+                handleSendSMSOTP={handleSendSMSOTP}
+                setOtp={setOtp}
+                otp={otp}
+                otpLoader={otpLoader}
+                handleResend={handleResendSMS}
+                phone={smsPhone}
+                setPhone={setSmsPhone}
+                phoneReadOnly={smsPhoneReadOnly}
+                countryCode={countryCode}
+                setCountryCode={setCountryCode}
               />
             )}
             {/* this component used for UI interaction and show their functionality */}

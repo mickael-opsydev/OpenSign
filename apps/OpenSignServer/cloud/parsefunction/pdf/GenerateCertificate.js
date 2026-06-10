@@ -54,6 +54,7 @@ export default async function GenerateCertificate(docDetails) {
   const createdAt = docDetails?.DocSentAt?.iso || docDetails.createdAt;
   const createdAtperTimezone = formatDateStr(createdAt, DateFormat, timezone, Is12Hr);
   const IsEnableOTP = docDetails?.IsEnableOTP || false;
+  const OTPType = docDetails?.OTPType || (IsEnableOTP ? 'email' : 'none');
   const placeholders = Array.isArray(docDetails?.Placeholders) ? docDetails.Placeholders : [];
   const filteredaudit = docDetails?.AuditTrail?.filter(x => {
     if (!x?.UserPtr?.objectId) return false;
@@ -320,7 +321,8 @@ export default async function GenerateCertificate(docDetails) {
   });
   let yPosition1 = ipY - 21;
   let yPosition2 = yPosition1 - 14;
-  let yPosition3 = yPosition2 - 20;
+  let yPosition2_5 = yPosition2 - 14;
+  let yPosition3 = yPosition2_5 - 20;
   let yPosition4 = yPosition3 - 20;
   let yPosition5 = yPosition4 - 20;
   let yPosition6 = yPosition5 - 20;
@@ -349,7 +351,8 @@ export default async function GenerateCertificate(docDetails) {
     });
     yPosition1 = newPage.getHeight() - 40;
     yPosition2 = yPosition1 - 20;
-    yPosition3 = yPosition2 - 20;
+    yPosition2_5 = yPosition2 - 14;
+    yPosition3 = yPosition2_5 - 20;
     yPosition4 = yPosition3 - 20;
     yPosition5 = yPosition4 - 20;
     yPosition6 = yPosition5 - 20;
@@ -391,18 +394,24 @@ export default async function GenerateCertificate(docDetails) {
       color: textValueColor,
     });
 
-    if (IsEnableOTP) {
-      currentPage.drawText('Security level :', {
-        x: half + 120,
-        y: yPosition2,
-        size: timeText,
+    if (OTPType !== 'none') {
+      let securityLabel = 'Email OTP';
+      if (OTPType === 'sms') {
+        securityLabel = 'SMS OTP';
+      } else if (OTPType === 'both') {
+        securityLabel = 'Email & SMS OTP';
+      }
+      currentPage.drawText('Security :', {
+        x: 30,
+        y: yPosition2_5,
+        size: signertext,
         font: timesRomanFont,
         color: textKeyColor,
       });
-      currentPage.drawText('Email, OTP Auth', {
-        x: half + 190,
-        y: yPosition2,
-        size: timeText,
+      currentPage.drawText(securityLabel, {
+        x: 85,
+        y: yPosition2_5,
+        size: signertext,
         font: timesRomanFont,
         color: textValueColor,
       });

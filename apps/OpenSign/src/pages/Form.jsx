@@ -70,7 +70,7 @@ const Forms = (props) => {
     file: "",
     remindOnceInEvery: 5,
     autoreminder: false,
-    IsEnableOTP: "false",
+    OTPType: "none",
     IsTourEnabled: "false",
     NotifyOnSignatures: "",
     Bcc: [],
@@ -445,7 +445,9 @@ const Forms = (props) => {
           object.set("PenColors", selectedColors);
 
             object.set("AllowModifications", false);
-            object.set("IsEnableOTP", false);
+            const otpType = formData.OTPType || "none";
+            object.set("OTPType", otpType);
+            object.set("IsEnableOTP", otpType !== "none");
             if (formData.NotifyOnSignatures !== undefined) {
               object.set("NotifyOnSignatures", formData.NotifyOnSignatures);
             }
@@ -523,7 +525,7 @@ const Forms = (props) => {
             NotifyOnSignatures: notifySign,
             remindOnceInEvery: 5,
             autoreminder: false,
-            IsEnableOTP: "false",
+            OTPType: "none",
             IsTourEnabled: istourenabled,
             RedirectUrl: "",
             AllowModifications: false,
@@ -616,7 +618,7 @@ const Forms = (props) => {
       file: "",
       remindOnceInEvery: 5,
       autoreminder: false,
-      IsEnableOTP: "false",
+      OTPType: "none",
       IsTourEnabled: istourenabled,
       NotifyOnSignatures: notifySign,
       RedirectUrl: "",
@@ -1343,6 +1345,37 @@ const Forms = (props) => {
                           />
                           <div className="text-center">{t("no")}</div>
                         </div>
+                      </div>
+                    </div>
+                    <div className="text-xs mt-3">
+                      <label className="block">
+                        <span>{t("otp-type")}</span>
+                        <a data-tooltip-id="otptype-tooltip" className="ml-1">
+                          <sup>
+                            <i className="fa-light fa-question rounded-full border-[#33bbff] text-[#33bbff] text-[13px] border-[1px] py-[1.5px] px-[4px]"></i>
+                          </sup>
+                        </a>
+                        <Tooltip id="otptype-tooltip" className="z-[999]">
+                          <div className="max-w-[200px] md:max-w-[450px]">
+                            <p className="font-bold">{t("otp-type")}</p>
+                            <p>{t("otp-type-help")}</p>
+                          </div>
+                        </Tooltip>
+                      </label>
+                      <div className="flex flex-wrap gap-3 ml-2 mt-1">
+                        {["none", "email", "sms", "both"].map((type) => (
+                          <div key={type} className="flex items-center gap-1">
+                            <input
+                              type="radio"
+                              value={type}
+                              name="OTPType"
+                              className="op-radio op-radio-xs"
+                              checked={formData.OTPType === type}
+                              onChange={handleStrInput}
+                            />
+                            <div className="text-center text-xs">{t(`otp-type-${type}`)}</div>
+                          </div>
+                        ))}
                       </div>
                     </div>
                     <div className="text-xs mt-2">

@@ -81,8 +81,8 @@ export async function getSignedUrl(request) {
           if (!res) return url;
 
           const _resDoc = res?.toJSON();
-          // Ensure user is authenticated if OTP is required
-          if (_resDoc?.IsEnableOTP) {
+          const OTPType = _resDoc?.OTPType || (_resDoc?.IsEnableOTP ? 'email' : 'none');
+          if (_resDoc?.IsEnableOTP || OTPType === 'sms' || OTPType === 'both') {
             const isAuth = await isAuthenticated(request?.user);
             if (!isAuth) {
               throw new Parse.Error(

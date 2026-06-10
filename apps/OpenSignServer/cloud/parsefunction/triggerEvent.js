@@ -12,13 +12,14 @@ export default async function triggerEvent(request) {
 
   try {
     const docQuery = new Parse.Query('contracts_Document');
-    docQuery.select(['Name', 'IsEnableOTP', 'SignedUrl', 'AuditTrail']);
+    docQuery.select(['Name', 'IsEnableOTP', 'OTPType', 'SignedUrl', 'AuditTrail']);
     const docRes = await docQuery.get(docId, { useMasterKey: true });
     const _docRes = docRes && docRes?.toJSON();
     const isEnableOTP = docRes?.get('IsEnableOTP') || false;
+    const OTPType = docRes?.get('OTPType') || '';
     const ipAddress = request.headers['x-real-ip'] || '';
 
-    if (isEnableOTP) {
+    if (isEnableOTP || OTPType === 'sms' || OTPType === 'both') {
       let userId;
       if (sessiontoken) {
         const userRes = await axios.get(serverUrl + '/users/me', {

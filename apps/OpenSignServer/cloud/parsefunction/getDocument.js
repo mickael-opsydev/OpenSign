@@ -24,10 +24,11 @@ export default async function getDocument(request) {
         const res = await query.first({ useMasterKey: true });
         if (res) {
           const IsEnableOTP = res?.get('IsEnableOTP') || false;
+          const OTPType = res?.get('OTPType') || '';
           const document = JSON.parse(JSON.stringify(res));
           delete document.ExtUserPtr.TenantId.FileAdapters;
           delete document?.ExtUserPtr?.TenantId?.PfxFile;
-          if (!IsEnableOTP) {
+          if (!IsEnableOTP && OTPType !== 'sms' && OTPType !== 'both') {
             return document;
           } else {
             if (sessiontoken) {

@@ -50,6 +50,7 @@ import {
   getOriginalWH,
   handleCheckResponse,
   convertJpegToPng,
+  handleSendOTP,
 } from "../constant/Utils";
 import Header from "../components/pdf/PdfHeader";
 import RenderPdf from "../components/pdf/RenderPdf";
@@ -58,6 +59,9 @@ import SignerListComponent from "../components/pdf/SignerListComponent";
 import PdfTools from "../components/pdf/PdfTools";
 import { useTranslation } from "react-i18next";
 import ModalUi from "../primitives/ModalUi";
+import VerifySMSOTP from "../components/pdf/VerifySMSOTP";
+import VerifyEmail from "../components/pdf/VerifyEmail";
+import { hasValidCountryCode } from "../components/CountryCodeSelect";
 import TourContentWithBtn from "../primitives/TourContentWithBtn";
 import HandleError from "../primitives/HandleError";
 import LoaderWithMsg from "../primitives/LoaderWithMsg";
@@ -126,6 +130,16 @@ function PdfRequestFiles(
     isModal: false
   });
   const [pdfLoad, setPdfLoad] = useState(false);
+  const [isSmsVerified, setIsSmsVerified] = useState(false);
+  const [smsVerifyModal, setSmsVerifyModal] = useState(false);
+  const [showSmsPhoneInput, setShowSmsPhoneInput] = useState(true);
+  const [smsPhone, setSmsPhone] = useState("");
+  const [otp, setOtp] = useState("");
+  const [otpLoader, setOtpLoader] = useState(false);
+  const [smsPhoneReadOnly, setSmsPhoneReadOnly] = useState(false);
+  const [countryCode, setCountryCode] = useState("");
+  const [isEmailOTPVerified, setIsEmailOTPVerified] = useState(false);
+  const [isVerifyModal, setIsVerifyModal] = useState(false);
   const [isSigned, setIsSigned] = useState(false);
   const [isExpired, setIsExpired] = useState(false);
   const [alreadySign, setAlreadySign] = useState(false);
@@ -642,6 +656,10 @@ function PdfRequestFiles(
     }
   };
 
+  const getOtpEmail = () => {
+    const currentSigner = pdfDetails?.[0]?.Signers?.find(x => x.objectId === signerObjectId);
+    return currentSigner?.Email || Parse.User.current()?.getEmail() || "";
+  };
   //function for embed signature or image url in pdf
   async function embedWidgetsData(
   ) {
@@ -656,35 +674,51 @@ function PdfRequestFiles(
     updateExpiryDate = new Date();
     updateExpiryDate.setDate(updateExpiryDate.getDate() + addExtraDays);
     const expiry = updateExpiryDate || pdfDetails?.[0].ExpiryDate.iso;
-    //for emailVerified data checking first in localstorage
     const localuser = localStorage.getItem(
       `Parse/${localStorage.getItem("parseAppId")}/currentUser`
     );
-    let currentUser = JSON.parse(localuser);
-    let isEmailVerified = currentUser?.emailVerified;
+    const currentUser = JSON.parse(localuser);
     const isEnableOTP = pdfDetails?.[0]?.IsEnableOTP || false;
-    //if emailVerified data is not present in local user details then fetch again in _User class
-    if (isEnableOTP) {
-      try {
-        if (!currentUser?.emailVerified) {
-          const userQuery = new Parse.Query(Parse.User);
-          const getUser = await userQuery.get(currentUser?.objectId, {
-            sessionToken:
-              currentUser?.sessionToken || localStorage.getItem("accesstoken")
-          });
-          if (getUser) {
-            currentUser = JSON.parse(JSON.stringify(getUser));
-          }
-        }
-        isEmailVerified = currentUser?.emailVerified;
-      } catch (err) {
-        console.log("err in get email verification ", err);
-        setHandleError(t("something-went-wrong-mssg"));
+    const OTPType = pdfDetails?.[0]?.OTPType || (isEnableOTP ? "email" : "none");
+    const isEmailOTP = OTPType === "email";
+    const isSMSOTP = OTPType === "sms" || OTPType === "both";
+    if (isEmailOTP) {
+      if (isEmailOTPVerified) {
+        setIsEmailOTPVerified(isEmailOTPVerified);
+      } else {
         setIsUiLoading(false);
+        setIsVerifyModal(true);
+        await handleSendOTP(Parse.User.current().getEmail());
+        return;
       }
     }
-    //check if isEmailVerified then go on next step
-    if (!isEnableOTP || isEmailVerified) {
+    if (isSMSOTP) {
+      if (isSmsVerified) {
+        setIsSmsVerified(isSmsVerified);
+      } else {
+        let userPhone = currentUser?.phone || "";
+        if (!userPhone) {
+          try {
+            const userQuery = new Parse.Query(Parse.User);
+            const freshUser = await userQuery.get(currentUser?.objectId, {
+              sessionToken:
+                currentUser?.sessionToken || localStorage.getItem("accesstoken")
+            });
+            if (freshUser) {
+              userPhone = freshUser.get("phone") || "";
+            }
+          } catch (err) {
+            console.log("err fetching user phone", err);
+          }
+        }
+        setSmsPhone(userPhone);
+        setSmsPhoneReadOnly(!!userPhone && hasValidCountryCode(userPhone));
+        setShowSmsPhoneInput(true);
+        setSmsVerifyModal(true);
+        setIsUiLoading(false);
+        return;
+      }
+    }
       try {
         const checkUser = signerPos.filter(
           (data) => data.signerObjId === signerObjectId
@@ -993,8 +1027,53 @@ function PdfRequestFiles(
           alertMessage: t("something-went-wrong-mssg")
         });
       }
-    }
   }
+  const handleVerifyEmail = async (e) => {
+    e.preventDefault();
+    setOtpLoader(true);
+    try {
+      const serverUrl = localStorage.getItem("baseUrl");
+      const parseId = localStorage.getItem("parseAppId");
+      const res = await axios.post(
+        `${serverUrl}functions/AuthLoginAsMail`,
+        { email: getOtpEmail(), otp: otp },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            "X-Parse-Application-Id": parseId,
+          },
+        }
+      );
+      if (res.data.result === "Invalid Otp") {
+        throw new Error(t("invalid-otp"));
+      } else if (res.data.result === "user not found!") {
+        throw new Error(t("user-not-found"));
+      } else {
+        await Parse.User.become(res.data.result.sessionToken);
+        setIsEmailOTPVerified(true);
+        setOtp("");
+        setIsVerifyModal(false);
+        setIsUiLoading(true);
+        await embedWidgetsData();
+        return;
+      }
+    } catch (error) {
+      alert(error.message);
+    } finally {
+      setOtpLoader(false);
+    }
+  };
+  const handleVerifyBtn = async () => {
+    setIsVerifyModal(true);
+    await handleSendOTP(getOtpEmail());
+  };
+  const handleResendEmail = async (e) => {
+    e.preventDefault();
+    setOtpLoader(true);
+    await handleSendOTP(getOtpEmail());
+    setOtpLoader(false);
+    alert(t("otp-sent-alert"));
+  };
   const handleSignPdf = async () => {
     setIsUiLoading(true);
       await embedWidgetsData();
@@ -1212,13 +1291,80 @@ function PdfRequestFiles(
   const handleDontShow = (isChecked) => {
     setIsDontShow(isChecked);
   };
+  const handleSendSMSOTP = async () => {
+    setSmsVerifyModal(true);
+    setOtpLoader(true);
+    try {
+      const res = await Parse.Cloud.run("SendSMSOTP", { phone: smsPhone });
+      setOtpLoader(false);
+      setShowSmsPhoneInput(false);
+      return res;
+    } catch (error) {
+      setOtpLoader(false);
+      throw error;
+    }
+  };
+  const handleVerifySMSOTP = async (e) => {
+    e.preventDefault();
+    setOtpLoader(true);
+    try {
+      const serverUrl = localStorage.getItem("baseUrl");
+      const parseId = localStorage.getItem("parseAppId");
+      const res = await axios.post(
+        `${serverUrl}functions/AuthLoginAsMail`,
+        { phone: smsPhone, otp: otp },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            "X-Parse-Application-Id": parseId,
+          },
+        }
+      );
+      if (res.data.result === "Invalid Otp") {
+        throw new Error(t("invalid-otp"));
+      } else if (res.data.result === "user not found!") {
+        throw new Error(t("user-not-found"));
+      } else {
+        setIsSmsVerified(true);
+        setSmsVerifyModal(false);
+        setOtp("");
+        return;
+      }
+    } finally {
+      setOtpLoader(false);
+    }
+  };
+  useEffect(() => {
+    if (!isSmsVerified) return;
+    (async () => {
+      try {
+        await handleSignPdf();
+      } catch (err) {
+        console.log("err after OTP sign", err);
+      }
+    })();
+  }, [isSmsVerified]);
+  const handleResendSMS = async (e) => {
+    e.preventDefault();
+    setOtp("");
+    setShowSmsPhoneInput(true);
+    try {
+      const res = await Parse.Cloud.run("SendSMSOTP", { phone: smsPhone });
+      setOtpLoader(false);
+      setShowSmsPhoneInput(false);
+      return res;
+    } catch (error) {
+      setOtpLoader(false);
+      throw error;
+    }
+  };
   //function to close tour and save tour status
   const closeRequestSignTour = async () => {
     setIsReqSignTourDisabled(true);
     if (isDontShow) {
-      const isEnableOTP = pdfDetails?.[0]?.IsEnableOTP || false;
+      const OTPType = pdfDetails?.[0]?.OTPType || (pdfDetails?.[0]?.IsEnableOTP ? "email" : "none");
       const sessionToken = localStorage.getItem("accesstoken");
-      if (!isEnableOTP && !sessionToken) {
+      if (OTPType === "none" && !sessionToken) {
         try {
           await axios.post(
             `${localStorage.getItem("baseUrl")}functions/updatecontacttour`,
@@ -2307,6 +2453,36 @@ function PdfRequestFiles(
             handleSaveFontSize={handleSaveFontSize}
             currWidgetsDetails={currWidgetsDetails}
           />
+          {isVerifyModal && !isEmailOTPVerified && pdfDetails?.[0]?.OTPType === "email" && (
+            <VerifyEmail
+              isVerifyModal={isVerifyModal}
+              setIsVerifyModal={setIsVerifyModal}
+              handleVerifyEmail={handleVerifyEmail}
+              setOtp={setOtp}
+              otp={otp}
+              otpLoader={otpLoader}
+              handleVerifyBtn={handleVerifyBtn}
+              handleResend={handleResendEmail}
+            />
+          )}
+          {smsVerifyModal && !isSmsVerified && (
+            <VerifySMSOTP
+              isVerifyModal={!showSmsPhoneInput}
+              showPhoneInput={showSmsPhoneInput}
+              setIsVerifyModal={setSmsVerifyModal}
+              handleVerifySMSOTP={handleVerifySMSOTP}
+              handleSendSMSOTP={handleSendSMSOTP}
+              setOtp={setOtp}
+              otp={otp}
+              otpLoader={otpLoader}
+              handleResend={handleResendSMS}
+              phone={smsPhone}
+              setPhone={setSmsPhone}
+              phoneReadOnly={smsPhoneReadOnly}
+              countryCode={countryCode}
+              setCountryCode={setCountryCode}
+            />
+          )}
     </>
   );
 }

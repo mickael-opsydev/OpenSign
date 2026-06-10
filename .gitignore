@@ -15,7 +15,9 @@
 .env
 .DS_Store
 .env.local
+.env.local_dev
 .env.development.local
+.env.prod
 .env.test.local
 .env.production.local
 

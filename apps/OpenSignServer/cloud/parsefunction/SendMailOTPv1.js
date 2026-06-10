@@ -1,4 +1,7 @@
 import { appName, smtpenable, updateMailCount } from '../../Utils.js';
+
+const RATE_LIMIT_SECONDS = 60;
+const devMode = process.env.NODE_ENV !== 'production';
 async function getDocument(docId) {
   try {
     const query = new Parse.Query('contracts_Document');
@@ -25,6 +28,37 @@ async function sendMailOTPv1(request) {
     const AppName = appName;
 
     if (email) {
+      const existingOtpQuery = new Parse.Query('defaultdata_Otp');
+      existingOtpQuery.equalTo('Email', email);
+      const existingOtp = await existingOtpQuery.first({ useMasterKey: true });
+      if (existingOtp) {
+        const lastUpdate = existingOtp.updatedAt || existingOtp.createdAt;
+        const elapsed = (Date.now() - lastUpdate.getTime()) / 1000;
+        if (elapsed < RATE_LIMIT_SECONDS) {
+          const waitTime = Math.ceil(RATE_LIMIT_SECONDS - elapsed);
+          return `Too many requests. Please wait ${waitTime} seconds.`;
+        }
+      }
+
+      const tempOtp = new Parse.Query('defaultdata_Otp');
+      tempOtp.equalTo('Email', email);
+      const resultOTP = await tempOtp.first({ useMasterKey: true });
+      if (resultOTP !== undefined) {
+        const updateOtpQuery = new Parse.Query('defaultdata_Otp');
+        const updateOtp = await updateOtpQuery.get(resultOTP.id, {
+          useMasterKey: true,
+        });
+        updateOtp.set('OTP', code);
+        updateOtp.save(null, { useMasterKey: true });
+      } else {
+        const otpClass = Parse.Object.extend('defaultdata_Otp');
+        const newOtpQuery = new otpClass();
+        newOtpQuery.set('OTP', code);
+        newOtpQuery.set('Email', email);
+        newOtpQuery.set('TenantId', TenantId);
+        await newOtpQuery.save(null, { useMasterKey: true });
+      }
+
       const recipient = request.params.email;
       const mailsender = smtpenable ? process.env.SMTP_USER_EMAIL : process.env.MAILGUN_SENDER;
       try {
@@ -38,7 +72,7 @@ async function sendMailOTPv1(request) {
             code +
             '</p></div></div></div></body></html>',
         });
-        console.log('OTP sent', code);
+        if (devMode) console.log('Dev mode — email OTP', code, 'for', email);
         if (request.params?.docId) {
           const extUserId = await getDocument(request.params?.docId);
           if (extUserId) {
@@ -46,28 +80,7 @@ async function sendMailOTPv1(request) {
           }
         }
       } catch (err) {
-        console.log('error in send OTP mail', err);
-      }
-      const tempOtp = new Parse.Query('defaultdata_Otp');
-      tempOtp.equalTo('Email', email);
-      const resultOTP = await tempOtp.first({ useMasterKey: true });
-      // console.log('resultOTP', resultOTP);
-      if (resultOTP !== undefined) {
-        const updateOtpQuery = new Parse.Query('defaultdata_Otp');
-        const updateOtp = await updateOtpQuery.get(resultOTP.id, {
-          useMasterKey: true,
-        });
-        updateOtp.set('OTP', code);
-        updateOtp.save(null, { useMasterKey: true });
-        //   console.log("update otp Res in tempSendOtp ", updateRes);
-      } else {
-        const otpClass = Parse.Object.extend('defaultdata_Otp');
-        const newOtpQuery = new otpClass();
-        newOtpQuery.set('OTP', code);
-        newOtpQuery.set('Email', email);
-        newOtpQuery.set('TenantId', TenantId);
-        await newOtpQuery.save(null, { useMasterKey: true });
-        //   console.log("new otp Res in tempSendOtp ", newRes);
+        if (devMode) console.log('Dev mode — email OTP', code, 'for', email);
       }
       return 'Otp send';
     } else {

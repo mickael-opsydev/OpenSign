@@ -263,6 +263,7 @@ async function startBulkSendInBackground(userId, Documents, Ip, parseConfig, typ
         OriginIp: Ip,
         DocSentAt: { __type: 'Date', iso: isoDate },
         IsEnableOTP: x?.IsEnableOTP || false,
+        OTPType: x?.OTPType || (x?.IsEnableOTP ? 'email' : 'none'),
         IsTourEnabled: x?.IsTourEnabled || false,
         AllowModifications: x?.AllowModifications || false,
         ...(x?.SenderName ? { SenderName: x?.SenderName } : {}),

@@ -43,7 +43,7 @@ const EditTemplate = ({
       template?.SendInOrderStrict === true ? "true" : "false",
     AutomaticReminders: template?.AutomaticReminders || false,
     RemindOnceInEvery: template?.RemindOnceInEvery || 5,
-    IsEnableOTP: template?.IsEnableOTP ? `${template?.IsEnableOTP}` : "false",
+    OTPType: template?.OTPType || (template?.IsEnableOTP ? "email" : "none"),
     IsTourEnabled: template?.IsTourEnabled
       ? `${template?.IsTourEnabled}`
       : "false",
@@ -197,7 +197,8 @@ const EditTemplate = ({
       isChecked && formData.SendInOrderStrict === "true";
     const isTourEnabled = formData?.IsTourEnabled === "false" ? false : true;
     const AutoReminder = formData?.AutomaticReminders || false;
-    const IsEnableOTP = formData.IsEnableOTP === "true" ? true : false;
+    const otpType = formData.OTPType || "none";
+    const IsEnableOTP = otpType !== "none";
     const allowModify = formData?.AllowModifications || false;
     let reminderDate = {};
     const remindOnceInEvery = formData?.RemindOnceInEvery;
@@ -218,6 +219,7 @@ const EditTemplate = ({
       ...(pdfUrl ? { URL: pdfUrl } : {}),
       SendinOrder: isChecked,
       SendInOrderStrict: isStrictOrder,
+      OTPType: otpType,
       IsEnableOTP: IsEnableOTP,
       IsTourEnabled: isTourEnabled,
       AllowModifications: allowModify,
@@ -549,6 +551,37 @@ const EditTemplate = ({
                   />
                   <div className="text-center">{t("no")}</div>
                 </div>
+              </div>
+            </div>
+            <div className="text-xs mt-3">
+              <label className="block">
+                <span>{t("otp-type")}</span>
+                <a data-tooltip-id="otptype-tooltip" className="ml-1">
+                  <sup>
+                    <i className="fa-light fa-question rounded-full border-[#33bbff] text-[#33bbff] text-[13px] border-[1px] py-[1.5px] px-[4px]"></i>
+                  </sup>
+                </a>
+                <Tooltip id="otptype-tooltip" className="z-[999]">
+                  <div className="max-w-[200px] md:max-w-[450px]">
+                    <p className="font-bold">{t("otp-type")}</p>
+                    <p>{t("otp-type-help")}</p>
+                  </div>
+                </Tooltip>
+              </label>
+              <div className="flex flex-wrap gap-3 ml-2 mt-1">
+                {["none", "email", "sms", "both"].map((type) => (
+                  <div key={type} className="flex items-center gap-1">
+                    <input
+                      type="radio"
+                      value={type}
+                      name="OTPType"
+                      className="op-radio op-radio-xs"
+                      checked={formData.OTPType === type}
+                      onChange={handleStrInput}
+                    />
+                    <div className="text-center text-xs">{t(`otp-type-${type}`)}</div>
+                  </div>
+                ))}
               </div>
             </div>
             <div className="text-xs mt-3 mb-4">

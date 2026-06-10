@@ -37,6 +37,7 @@ export default function reportJson(id, currentUserId) {
     'TimeToCompleteDays',
     'AllowModifications',
     'IsEnableOTP',
+    'OTPType',
     'IsTourEnabled',
     'NotifyOnSignatures',
     'RedirectUrl',
