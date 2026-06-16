@@ -416,6 +416,18 @@ export const selectFormat = (data) => {
       return "dd.MM.yyyy";
     case "DD-MMM-YYYY":
       return "dd-MMM-yyyy";
+    case "DD/MM/YYYY HH:mm":
+      return "dd/MM/yyyy HH:mm";
+    case "MM/DD/YYYY HH:mm":
+      return "MM/dd/yyyy HH:mm";
+    case "YYYY-MM-DD HH:mm":
+      return "yyyy-MM-dd HH:mm";
+    case "DD/MM/YYYY hh:mm A":
+      return "dd/MM/yyyy hh:mm a";
+    case "HH:mm":
+      return "HH:mm";
+    case "hh:mm A":
+      return "hh:mm a";
     default:
       return "MM/dd/yyyy";
   }
@@ -447,6 +459,18 @@ export const changeDateToMomentFormat = (format) => {
       return "DD.MM.YYYY";
     case "dd-MMM-yyyy":
       return "DD-MMM-YYYY";
+    case "dd/MM/yyyy HH:mm":
+      return "DD/MM/YYYY HH:mm";
+    case "MM/dd/yyyy HH:mm":
+      return "MM/DD/YYYY HH:mm";
+    case "yyyy-MM-dd HH:mm":
+      return "YYYY-MM-DD HH:mm";
+    case "dd/MM/yyyy hh:mm a":
+      return "DD/MM/YYYY hh:mm A";
+    case "HH:mm":
+      return "HH:mm";
+    case "hh:mm a":
+      return "hh:mm A";
     default:
       return "L";
   }

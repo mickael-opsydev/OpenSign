@@ -395,12 +395,16 @@ export default async function GenerateCertificate(docDetails) {
     });
 
     if (OTPType !== 'none') {
-      let securityLabel = 'Email OTP';
-      if (OTPType === 'sms') {
-        securityLabel = 'SMS OTP';
-      } else if (OTPType === 'both') {
-        securityLabel = 'Email & SMS OTP';
+      const securityParts = [];
+      if (OTPType === 'email' || OTPType === 'both') {
+        const emailValidatedOn = formatDateStr(x?.OtpEmailValidatedOn, DateFormat, timezone, Is12Hr);
+        securityParts.push(emailValidatedOn ? `Email OTP verified ${emailValidatedOn}` : 'Email OTP');
       }
+      if (OTPType === 'sms' || OTPType === 'both') {
+        const smsValidatedOn = formatDateStr(x?.OtpSmsValidatedOn, DateFormat, timezone, Is12Hr);
+        securityParts.push(smsValidatedOn ? `SMS OTP verified ${smsValidatedOn}` : 'SMS OTP');
+      }
+      const securityLabel = securityParts.join('  ·  ');
       currentPage.drawText('Security :', {
         x: 30,
         y: yPosition2_5,
@@ -408,10 +412,19 @@ export default async function GenerateCertificate(docDetails) {
         font: timesRomanFont,
         color: textKeyColor,
       });
+      const securityValueX = 85;
+      const securityMaxWidth = width - 30 - securityValueX;
+      let securitySize = signertext;
+      while (
+        securitySize > 7 &&
+        timesRomanFont.widthOfTextAtSize(securityLabel, securitySize) > securityMaxWidth
+      ) {
+        securitySize -= 1;
+      }
       currentPage.drawText(securityLabel, {
-        x: 85,
+        x: securityValueX,
         y: yPosition2_5,
-        size: signertext,
+        size: securitySize,
         font: timesRomanFont,
         color: textValueColor,
       });

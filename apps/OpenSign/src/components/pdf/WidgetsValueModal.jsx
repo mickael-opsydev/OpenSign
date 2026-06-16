@@ -1532,6 +1532,20 @@ function WidgetsValueModal(props) {
                   closeOnScroll
                   selected={startDate}
                   onChange={handleOnDateChange}
+                  showTimeSelect={/[Hh]/.test(
+                    selectDate?.format ||
+                      currWidgetsDetails?.options?.validation?.format ||
+                      ""
+                  )}
+                  timeFormat={
+                    /a/i.test(
+                      selectDate?.format ||
+                        currWidgetsDetails?.options?.validation?.format ||
+                        ""
+                    )
+                      ? "hh:mm a"
+                      : "HH:mm"
+                  }
                   popperPlacement="top-end"
                   customInput={<ExampleCustomInput />}
                   dateFormat={

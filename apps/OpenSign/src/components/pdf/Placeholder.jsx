@@ -189,6 +189,9 @@ function Placeholder(props) {
       } else {
         date = selectDate?.date ? new Date(selectDate?.date) : new Date();
       }
+      if (isNaN(date.getTime())) {
+        date = new Date();
+      }
       const milliseconds = date.getTime();
       const newDate = moment(milliseconds).format(data);
       const dateObj = { date: newDate, format: selectFormat(data) };
@@ -1099,6 +1102,13 @@ function Placeholder(props) {
                         selectDate?.date,
                         selectDate?.format
                       )}
+                      showTimeSelect={/[Hh]/.test(selectDate?.format || "")}
+                      timeFormat={
+                        /[Hh]:mm/.test(selectDate?.format || "") &&
+                        /a/i.test(selectDate?.format || "")
+                          ? "hh:mm a"
+                          : "HH:mm"
+                      }
                       popperPlacement="top-end"
                       customInput={<DatePickerCustomInput />}
                       onChange={(date) => {

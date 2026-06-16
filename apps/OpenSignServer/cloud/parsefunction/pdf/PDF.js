@@ -87,7 +87,8 @@ async function updateDoc(
   className,
   sign,
   documentHash,
-  activity
+  activity,
+  otpValidation
 ) {
   try {
     const UserPtr = { __type: 'Pointer', className: className, objectId: userId };
@@ -99,6 +100,12 @@ async function updateDoc(
       ipAddress: ipAddress,
       SignedOn: new Date(),
       Signature: sign,
+      ...(otpValidation?.OtpEmailValidatedOn && {
+        OtpEmailValidatedOn: otpValidation.OtpEmailValidatedOn,
+      }),
+      ...(otpValidation?.OtpSmsValidatedOn && {
+        OtpSmsValidatedOn: otpValidation.OtpSmsValidatedOn,
+      }),
     };
     let updateAuditTrail;
     if (data.AuditTrail && data.AuditTrail.length > 0) {
@@ -410,6 +417,26 @@ async function PDF(req) {
         throw new Parse.Error(Parse.Error.INVALID_SESSION_TOKEN, 'User is not authenticated.');
       }
     }
+    const otpValidation = {};
+    if (req?.user && (IsEnableOTP || (OTPType && OTPType !== 'none'))) {
+      try {
+        const otpQuery = new Parse.Query('defaultdata_Otp');
+        otpQuery.equalTo('UserId', req.user.id);
+        const otpRecords = await otpQuery.find({ useMasterKey: true });
+        for (const rec of otpRecords) {
+          const emailAt = rec.get('EmailValidatedAt');
+          const smsAt = rec.get('SmsValidatedAt');
+          if (emailAt && !otpValidation.OtpEmailValidatedOn) {
+            otpValidation.OtpEmailValidatedOn = emailAt.toISOString();
+          }
+          if (smsAt && !otpValidation.OtpSmsValidatedOn) {
+            otpValidation.OtpSmsValidatedOn = smsAt.toISOString();
+          }
+        }
+      } catch (otpErr) {
+        console.log('err fetching otp validation times', otpErr);
+      }
+    }
     const _resDoc = resDoc?.toJSON();
     let signUser;
     let className;
@@ -534,7 +561,8 @@ async function PDF(req) {
           className, // className based on flow
           sign, // sign base64
           isCompleted ? documentHash : undefined,
-          auditActivity
+          auditActivity,
+          otpValidation
         );
         sendNotifyMail(_resDoc, signUser, mailProvider, publicUrl);
         saveFileUsage(pdfSize, data.imageUrl, _resDoc?.CreatedBy?.objectId);

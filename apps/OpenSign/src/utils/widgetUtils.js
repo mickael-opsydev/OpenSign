@@ -26,7 +26,13 @@ export const dateFormat = [
   "LL",
   "DD MMM, YYYY",
   "DD MMMM, YYYY",
-  "DD-MMM-YYYY"
+  "DD-MMM-YYYY",
+  "DD/MM/YYYY HH:mm",
+  "MM/DD/YYYY HH:mm",
+  "YYYY-MM-DD HH:mm",
+  "DD/MM/YYYY hh:mm A",
+  "HH:mm",
+  "hh:mm A"
 ];
 // `handlesavesign` is used to save signature, initials, stamp as a default
 export const saveToMySign = async (widget) => {

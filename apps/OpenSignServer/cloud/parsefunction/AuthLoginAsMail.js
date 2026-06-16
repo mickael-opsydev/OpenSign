@@ -27,6 +27,19 @@ async function AuthLoginAsMail(request) {
       if (resOtp === otp) {
         try {
           const result = await getToken();
+          try {
+            if (email) {
+              res.set('EmailValidatedAt', new Date());
+            } else if (phone) {
+              res.set('SmsValidatedAt', new Date());
+            }
+            if (result?.objectId) {
+              res.set('UserId', result.objectId);
+            }
+            await res.save(null, { useMasterKey: true });
+          } catch (stampErr) {
+            console.log('err stamping otp validation time', stampErr);
+          }
           if (email && !result?.emailVerified) {
             const userQuery = new Parse.Query(Parse.User);
             const user = await userQuery.get(result?.objectId, {
