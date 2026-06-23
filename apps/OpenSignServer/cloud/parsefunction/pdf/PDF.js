@@ -106,6 +106,9 @@ async function updateDoc(
       ...(otpValidation?.OtpSmsValidatedOn && {
         OtpSmsValidatedOn: otpValidation.OtpSmsValidatedOn,
       }),
+      ...(otpValidation?.OtpSmsPhone && {
+        OtpSmsPhone: otpValidation.OtpSmsPhone,
+      }),
     };
     let updateAuditTrail;
     if (data.AuditTrail && data.AuditTrail.length > 0) {
@@ -418,7 +421,22 @@ async function PDF(req) {
       }
     }
     const otpValidation = {};
-    if (req?.user && (IsEnableOTP || (OTPType && OTPType !== 'none'))) {
+    if (req.params?.otpEmailValidatedOn) {
+      otpValidation.OtpEmailValidatedOn = req.params.otpEmailValidatedOn;
+    }
+    if (req.params?.otpSmsValidatedOn) {
+      otpValidation.OtpSmsValidatedOn = req.params.otpSmsValidatedOn;
+    }
+    if (req.params?.otpSmsPhone) {
+      otpValidation.OtpSmsPhone = req.params.otpSmsPhone;
+    }
+    if (
+      req?.user &&
+      (IsEnableOTP || (OTPType && OTPType !== 'none')) &&
+      (!otpValidation.OtpEmailValidatedOn ||
+        !otpValidation.OtpSmsValidatedOn ||
+        !otpValidation.OtpSmsPhone)
+    ) {
       try {
         const otpQuery = new Parse.Query('defaultdata_Otp');
         otpQuery.equalTo('UserId', req.user.id);
@@ -431,6 +449,9 @@ async function PDF(req) {
           }
           if (smsAt && !otpValidation.OtpSmsValidatedOn) {
             otpValidation.OtpSmsValidatedOn = smsAt.toISOString();
+          }
+          if (smsAt && !otpValidation.OtpSmsPhone) {
+            otpValidation.OtpSmsPhone = rec.get('Phone') || '';
           }
         }
       } catch (otpErr) {

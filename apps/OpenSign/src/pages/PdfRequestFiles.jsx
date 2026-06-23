@@ -156,6 +156,8 @@ function PdfRequestFiles(
   const [documentId, setDocumentId] = useState("");
   const isSidebar = useSelector((state) => state.sidebar.isOpen);
   const divRef = useRef(null);
+  const otpEmailValidatedOnRef = useRef("");
+  const otpSmsValidatedOnRef = useRef("");
   const [isDownloadModal, setIsDownloadModal] = useState(false);
   const [signatureType, setSignatureType] = useState([]);
   const [pdfBase64Url, setPdfBase64Url] = useState("");
@@ -815,7 +817,12 @@ function PdfRequestFiles(
                   contactId,
                   objectId,
                   widgets,
-                  "Signed"
+                  "Signed",
+                  {
+                    email: otpEmailValidatedOnRef.current,
+                    sms: otpSmsValidatedOnRef.current,
+                    smsPhone: smsPhone
+                  }
                 );
                 if (resSign && resSign.status === "success") {
                   dispatch(setTypedSignFont("Fasthand"));
@@ -1049,6 +1056,8 @@ function PdfRequestFiles(
       } else if (res.data.result === "user not found!") {
         throw new Error(t("user-not-found"));
       } else {
+        otpEmailValidatedOnRef.current =
+          res.data?.result?.otpValidatedAt || new Date().toISOString();
         await Parse.User.become(res.data.result.sessionToken);
         setIsEmailOTPVerified(true);
         setOtp("");
@@ -1325,6 +1334,8 @@ function PdfRequestFiles(
       } else if (res.data.result === "user not found!") {
         throw new Error(t("user-not-found"));
       } else {
+        otpSmsValidatedOnRef.current =
+          res.data?.result?.otpValidatedAt || new Date().toISOString();
         setIsSmsVerified(true);
         setSmsVerifyModal(false);
         setOtp("");

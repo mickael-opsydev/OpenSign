@@ -76,6 +76,9 @@ export default async function GenerateCertificate(docDetails) {
             SignedOn: x?.SignedOn || generatedUTCTime,
             ViewedOn: x?.ViewedOn || x?.SignedOn || generatedUTCTime,
             Signature: x?.Signature || '',
+            OtpEmailValidatedOn: x?.OtpEmailValidatedOn || '',
+            OtpSmsValidatedOn: x?.OtpSmsValidatedOn || '',
+            OtpSmsPhone: x?.OtpSmsPhone || '',
             _signedOnTs: toTs(x?.SignedOn),
           };
         })
@@ -86,6 +89,9 @@ export default async function GenerateCertificate(docDetails) {
             SignedOn: filteredaudit[0]?.SignedOn || generatedUTCTime,
             ViewedOn: filteredaudit[0]?.ViewedOn || filteredaudit[0]?.SignedOn || generatedUTCTime,
             Signature: filteredaudit[0]?.Signature || '',
+            OtpEmailValidatedOn: filteredaudit[0]?.OtpEmailValidatedOn || '',
+            OtpSmsValidatedOn: filteredaudit[0]?.OtpSmsValidatedOn || '',
+            OtpSmsPhone: filteredaudit[0]?.OtpSmsPhone || '',
             _signedOnTs: toTs(filteredaudit[0]?.SignedOn),
           },
         ];
@@ -402,7 +408,11 @@ export default async function GenerateCertificate(docDetails) {
       }
       if (OTPType === 'sms' || OTPType === 'both') {
         const smsValidatedOn = formatDateStr(x?.OtpSmsValidatedOn, DateFormat, timezone, Is12Hr);
-        securityParts.push(smsValidatedOn ? `SMS OTP verified ${smsValidatedOn}` : 'SMS OTP');
+        const smsPhone = x?.OtpSmsPhone || '';
+        let smsLabel = 'SMS OTP';
+        if (smsPhone) smsLabel += ` (${smsPhone})`;
+        if (smsValidatedOn) smsLabel += ` verified ${smsValidatedOn}`;
+        securityParts.push(smsLabel);
       }
       const securityLabel = securityParts.join('  ·  ');
       currentPage.drawText('Security :', {

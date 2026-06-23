@@ -91,6 +91,8 @@ function SignYourSelf() {
     "OpenSign™";
   const divRef = useRef(null);
   const nodeRef = useRef(null);
+  const otpEmailValidatedOnRef = useRef("");
+  const otpSmsValidatedOnRef = useRef("");
   const pdfRef = useRef();
   const numPages = 1;
   const [pdfDetails, setPdfDetails] = useState([]);
@@ -505,6 +507,7 @@ function SignYourSelf() {
         email: Parse.User.current().getEmail()
       });
       if (resEmail?.message === "Email is verified." || resEmail?.message === "Email is already verified.") {
+        otpEmailValidatedOnRef.current = new Date().toISOString();
         setIsEmailOTPVerified(true);
         setOtp("");
         setIsVerifyModal(false);
@@ -560,6 +563,8 @@ function SignYourSelf() {
       } else if (res.data.result === "user not found!") {
         throw new Error(t("user-not-found"));
       } else {
+        otpSmsValidatedOnRef.current =
+          res.data?.result?.otpValidatedAt || new Date().toISOString();
         setIsSmsVerified(true);
         setSmsVerifyModal(false);
         setOtp("");
@@ -874,6 +879,16 @@ function SignYourSelf() {
       docId: documentId,
       isCustomCompletionMail: isCustomCompletionMail,
       signature: suffixbase64,
+      ...(otpEmailValidatedOnRef.current && {
+        otpEmailValidatedOn: otpEmailValidatedOnRef.current,
+      }),
+      ...(otpSmsValidatedOnRef.current && {
+        otpSmsValidatedOn: otpSmsValidatedOnRef.current,
+      }),
+      ...(otpSmsValidatedOnRef.current &&
+        smsPhone && {
+          otpSmsPhone: smsPhone,
+        }),
     };
     const resSignPdf = await Parse.Cloud.run("signPdf", params);
     if (resSignPdf) {

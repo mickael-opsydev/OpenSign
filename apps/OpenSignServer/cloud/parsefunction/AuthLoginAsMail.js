@@ -28,15 +28,20 @@ async function AuthLoginAsMail(request) {
         try {
           const result = await getToken();
           try {
+            const validatedAt = new Date();
             if (email) {
-              res.set('EmailValidatedAt', new Date());
+              res.set('EmailValidatedAt', validatedAt);
             } else if (phone) {
-              res.set('SmsValidatedAt', new Date());
+              res.set('SmsValidatedAt', validatedAt);
             }
             if (result?.objectId) {
               res.set('UserId', result.objectId);
             }
             await res.save(null, { useMasterKey: true });
+            if (result && typeof result === 'object') {
+              result.otpValidatedAt = validatedAt.toISOString();
+              result.otpChannel = email ? 'email' : 'sms';
+            }
           } catch (stampErr) {
             console.log('err stamping otp validation time', stampErr);
           }
