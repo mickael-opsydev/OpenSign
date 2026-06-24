@@ -533,12 +533,13 @@ export default async function GenerateCertificate(docDetails) {
 
     yPosition1 = yPosition8 - 20;
     yPosition2 = yPosition1 - 20;
-    yPosition3 = yPosition2 - 20;
+    yPosition2_5 = yPosition2 - 14;
+    yPosition3 = yPosition2_5 - 20;
     yPosition4 = yPosition3 - 20;
     yPosition5 = yPosition4 - 20;
     yPosition6 = yPosition5 - 20;
     yPosition7 = yPosition6 - 20;
-    yPosition8 = yPosition8 - 174;
+    yPosition8 = yPosition7 - 35;
   }
 
   const pdfBytes = await pdfDoc.save();
