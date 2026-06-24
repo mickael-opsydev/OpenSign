@@ -1,5 +1,4 @@
-import { useState } from "react";
-import AsyncSelect from "react-select/async";
+import { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { useTranslation } from "react-i18next";
 import { emailRegex } from "../../constant/const";
@@ -29,12 +28,60 @@ const parseLine = (line) => {
   return { Name: name, Email: email, Phone: phone };
 };
 
+const fetchContacts = async (search) => {
+  const baseURL = localStorage.getItem("baseUrl");
+  const url = `${baseURL}functions/getsigners`;
+  const headers = {
+    "Content-Type": "application/json",
+    "X-Parse-Application-Id": localStorage.getItem("parseAppId"),
+    "X-Parse-Session-Token": localStorage.getItem("accesstoken")
+  };
+  const axiosRes = await axios.post(url, { search: search || "" }, { headers });
+  return axiosRes?.data?.result || [];
+};
+
 const BulkRecipientPicker = (props) => {
   const { t } = useTranslation();
   const { recipients, setRecipients } = props;
   const [tab, setTab] = useState("contacts");
   const [pasteValue, setPasteValue] = useState("");
   const [error, setError] = useState("");
+  const [contactSearch, setContactSearch] = useState("");
+  const [contactResults, setContactResults] = useState([]);
+  const [contactLoading, setContactLoading] = useState(false);
+  const debounceRef = useRef(null);
+
+  const loadContacts = async (search) => {
+    setContactLoading(true);
+    try {
+      const res = await fetchContacts(search);
+      setContactResults(res);
+    } catch (err) {
+      console.log("err loading contacts", err);
+      setContactResults([]);
+    } finally {
+      setContactLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadContacts("");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      loadContacts(contactSearch);
+    }, 300);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contactSearch]);
+
+  const isAdded = (email) =>
+    recipients.some((r) => normalizeEmail(r.Email) === normalizeEmail(email));
 
   const addRecipients = (incoming) => {
     setError("");
@@ -65,38 +112,28 @@ const BulkRecipientPicker = (props) => {
     setRecipients((prev) => prev.filter((r) => r.id !== id));
   };
 
-  const loadContactOptions = async (inputValue) => {
-    try {
-      const baseURL = localStorage.getItem("baseUrl");
-      const url = `${baseURL}functions/getsigners`;
-      const headers = {
-        "Content-Type": "application/json",
-        "X-Parse-Application-Id": localStorage.getItem("parseAppId"),
-        "X-Parse-Session-Token": localStorage.getItem("accesstoken")
-      };
-      const axiosRes = await axios.post(url, { search: inputValue || "" }, { headers });
-      const contactRes = axiosRes?.data?.result || [];
-      return contactRes.map((item) => ({
-        label: `${item.Name || ""} <${item.Email}>`,
-        value: item.objectId,
-        contact: item
-      }));
-    } catch (err) {
-      console.log("err loading contacts", err);
-      return [];
-    }
+  const addContact = (contact) => {
+    addRecipients([
+      {
+        Name: contact.Name || "",
+        Email: contact.Email || "",
+        Phone: contact.Phone || "",
+        objectId: contact.objectId,
+        contact
+      }
+    ]);
   };
 
-  const handleSelectContacts = (selected) => {
-    if (!selected) return;
-    const incoming = (Array.isArray(selected) ? selected : [selected]).map((opt) => ({
-      Name: opt.contact?.Name || "",
-      Email: opt.contact?.Email || "",
-      Phone: opt.contact?.Phone || "",
-      objectId: opt.contact?.objectId || opt.value,
-      contact: opt.contact
-    }));
-    addRecipients(incoming);
+  const addAllContacts = () => {
+    addRecipients(
+      contactResults.map((c) => ({
+        Name: c.Name || "",
+        Email: c.Email || "",
+        Phone: c.Phone || "",
+        objectId: c.objectId,
+        contact: c
+      }))
+    );
   };
 
   const handlePasteAdd = () => {
@@ -189,29 +226,73 @@ const BulkRecipientPicker = (props) => {
 
       {tab === "contacts" && (
         <div className="mb-2">
-          <AsyncSelect
-            isMulti
-            cacheOptions
-            defaultOptions
-            value={[]}
-            placeholder={t("choose-from-contacts")}
-            loadingMessage={() => t("loading")}
-            noOptionsMessage={() => t("contact-not-found")}
-            loadOptions={loadContactOptions}
-            onChange={handleSelectContacts}
-            unstyled
-            classNames={{
-              control: () =>
-                "op-input op-input-bordered op-input-sm focus:outline-none w-full text-[13px]",
-              valueContainer: () => "flex flex-row flex-wrap gap-[2px] w-full my-[2px]",
-              menu: () =>
-                "mt-1 shadow-md rounded-lg bg-base-200 text-base-content absolute z-9999 w-full",
-              option: () =>
-                "bg-base-200 text-base-content rounded-lg m-1 hover:bg-base-300 p-2 cursor-pointer",
-              noOptionsMessage: () => "p-2 bg-base-200 rounded-lg m-1"
-            }}
-            menuPortalTarget={document.getElementById("bulkRecipientPicker")}
-          />
+          <div className="flex items-center gap-2 mb-2">
+            <div className="relative flex-1">
+              <i className="fa-light fa-magnifying-glass absolute left-2 top-1/2 -translate-y-1/2 text-[12px] opacity-60"></i>
+              <input
+                type="text"
+                className="op-input op-input-bordered op-input-sm w-full text-[13px] pl-7"
+                placeholder={t("search-contacts") || t("choose-from-contacts")}
+                value={contactSearch}
+                onChange={(e) => setContactSearch(e.target.value)}
+              />
+            </div>
+            {contactResults.length > 0 && (
+              <button
+                type="button"
+                className="op-btn op-btn-ghost op-btn-sm whitespace-nowrap"
+                onClick={addAllContacts}
+              >
+                {t("add-all") || "Add all"}
+              </button>
+            )}
+          </div>
+          <div className="max-h-[200px] overflow-auto border rounded-md">
+            {contactLoading ? (
+              <p className="text-[12px] opacity-60 p-3">{t("loading")}</p>
+            ) : contactResults.length === 0 ? (
+              <p className="text-[12px] opacity-60 p-3">{t("contact-not-found")}</p>
+            ) : (
+              <ul className="divide-y">
+                {contactResults.map((c) => {
+                  const added = isAdded(c.Email);
+                  return (
+                    <li
+                      key={c.objectId}
+                      className="flex items-center justify-between px-3 py-2"
+                    >
+                      <div className="flex flex-col overflow-hidden">
+                        <span className="text-[13px] font-medium truncate">
+                          {c.Name || c.Email}
+                        </span>
+                        <span className="text-[11px] opacity-70 truncate">{c.Email}</span>
+                      </div>
+                      <button
+                        type="button"
+                        disabled={added}
+                        onClick={() => addContact(c)}
+                        className={`op-btn op-btn-xs ${
+                          added ? "op-btn-ghost opacity-60" : "op-btn-primary"
+                        }`}
+                      >
+                        {added ? (
+                          <>
+                            <i className="fa-light fa-check mr-1"></i>
+                            {t("added") || "Added"}
+                          </>
+                        ) : (
+                          <>
+                            <i className="fa-light fa-plus mr-1"></i>
+                            {t("add")}
+                          </>
+                        )}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
         </div>
       )}
 

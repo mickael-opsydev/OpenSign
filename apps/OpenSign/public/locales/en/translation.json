@@ -1605,5 +1605,7 @@
   "declined": "Declined",
   "signed-status": "Signed",
   "signed-date": "Signed on",
-  "clear-all": "Clear all"
+  "clear-all": "Clear all",
+  "add-all": "Add all",
+  "added": "Added"
 }

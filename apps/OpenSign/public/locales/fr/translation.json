@@ -1596,5 +1596,7 @@
   "declined": "Refusé",
   "signed-status": "Signés",
   "signed-date": "Signé le",
-  "clear-all": "Tout effacer"
+  "clear-all": "Tout effacer",
+  "add-all": "Tout ajouter",
+  "added": "Ajouté"
 }
