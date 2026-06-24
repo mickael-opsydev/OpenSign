@@ -56,6 +56,7 @@ import { useTranslation, Trans } from "react-i18next";
 import RotateAlert from "../components/RotateAlert";
 import Loader from "../primitives/Loader";
 import ModalUi from "../primitives/ModalUi";
+import BulkSendIndependent from "../components/bulksend/BulkSendIndependent";
 import TourContentWithBtn from "../primitives/TourContentWithBtn";
 import HandleError from "../primitives/HandleError";
 import LoaderWithMsg from "../primitives/LoaderWithMsg";
@@ -81,6 +82,7 @@ function PlaceHolderSign() {
   const editorRef = useRef();
   const navigate = useNavigate();
   const [isMailModal, setIsMailModal] = useState(false);
+  const [isBulkSendIndependent, setIsBulkSendIndependent] = useState(false);
   const [customizeMail, setCustomizeMail] = useState({
     body: { basic: "", advanced: "" },
     subject: ""
@@ -2184,6 +2186,23 @@ function PlaceHolderSign() {
                 roleName={roleName}
               />
 
+              {isBulkSendIndependent && (
+                <ModalUi
+                  isOpen
+                  showScrollBar
+                  title={t("send-independently")}
+                  reduceWidth={"md:min-w-[60%]"}
+                  handleClose={() => setIsBulkSendIndependent(false)}
+                >
+                  <BulkSendIndependent
+                    Placeholders={signerPos}
+                    item={pdfDetails?.[0]}
+                    sourceType="document"
+                    signatureType={pdfDetails?.[0]?.SignatureType}
+                    handleClose={() => setIsBulkSendIndependent(false)}
+                  />
+                </ModalUi>
+              )}
               {/* pdf header which contain funish back button */}
               <Header
                 completeBtnTitle={t("next")}
@@ -2196,6 +2215,7 @@ function PlaceHolderSign() {
                 signersdata={signersdata}
                 isMailSend={isMailSend}
                 handleSaveDoc={handleSaveDoc}
+                onBulkSend={() => setIsBulkSendIndependent(true)}
                 isShowHeader={true}
                 currentSigner={true}
                 handleRotationFun={handleRotationFun}

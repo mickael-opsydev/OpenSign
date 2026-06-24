@@ -485,6 +485,14 @@ export default function reportJson(id) {
               action: "redirect"
             },
             {
+              btnId: "1640",
+              btnLabel: "Send independently",
+              hoverLabel: "Send independently",
+              btnIcon: "fa-light fa-users",
+              redirectUrl: "",
+              action: "bulksendindependent"
+            },
+            {
               btnId: "1633",
               btnLabel: "Rename",
               hoverLabel: "Rename",

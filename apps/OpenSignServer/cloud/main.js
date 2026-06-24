@@ -67,6 +67,8 @@ import createDocumentFromApp from './parsefunction/createDocumentFromApp.js';
 import SendSMSOTP from './parsefunction/SendSMSOTP.js';
 import ChangePhoneNumber from './parsefunction/ChangePhoneNumber.js';
 import VerifyPassword from './parsefunction/VerifyPassword.js';
+import getBulkSendList from './parsefunction/getBulkSendList.js';
+import getBulkSendReport from './parsefunction/getBulkSendReport.js';
 
 // This afterSave function triggers after an object is added or updated in the specified class, allowing for post-processing logic.
 Parse.Cloud.afterSave('contracts_Document', DocumentAftersave);
@@ -144,3 +146,5 @@ Parse.Cloud.define('createdocumentfromapp', createDocumentFromApp);
 Parse.Cloud.define('SendSMSOTP', SendSMSOTP);
 Parse.Cloud.define('ChangePhoneNumber', ChangePhoneNumber);
 Parse.Cloud.define('VerifyPassword', VerifyPassword);
+Parse.Cloud.define('getbulksendlist', getBulkSendList);
+Parse.Cloud.define('getbulksendreport', getBulkSendReport);

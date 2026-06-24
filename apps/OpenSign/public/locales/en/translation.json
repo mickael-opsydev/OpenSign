@@ -122,7 +122,8 @@
       "Team-update-successfully": "Team Updated successfully.",
       "Users": "Users"
     },
-    "Global SMTP": "Global SMTP"
+    "Global SMTP": "Global SMTP",
+    "Bulk sends": "Bulk sends"
   },
   "dashboard-card": {
     "Need your Signature": "Need your signature",
@@ -171,7 +172,8 @@
     "Reset password": "Reset password",
     "View formdata": "View formdata",
     "Download all formdata": "Download all formdata",
-    "API credits": "API credits"
+    "API credits": "API credits",
+    "Send independently": "Send independently"
   },
   "report-heading": {
     "Sr.No": "Sr.No",
@@ -1574,13 +1576,34 @@
   "phone-locked": "Phone number is set by your administrator. Contact them to change it.",
   "change-phone": "Change Phone Number",
   "change-phone-password-help": "Please enter your current password to verify your identity.",
-  "current-password": "Current password",
-  "next": "Next",
   "change-phone-new-help": "Enter your new phone number. An SMS with a verification code will be sent.",
   "country-code": "Country code",
   "confirm": "Confirm",
   "change-phone-email-sent": "A confirmation email has been sent to your email address. If you did not request this change, please contact your administrator immediately.",
   "not-set": "Not set",
   "current": "Current",
-  "change": "Change"
+  "change": "Change",
+  "send-independently": "Send independently",
+  "bulk-sends": "Bulk sends",
+  "bulk-no-new-recipients": "No new recipients added.",
+  "bulk-no-valid-emails": "No valid email addresses found.",
+  "bulk-paste-emails": "Paste emails",
+  "bulk-import-csv": "Import CSV",
+  "bulk-paste-placeholder": "One recipient per line: Name <email@example.com> or email@example.com",
+  "bulk-csv-hint": "Accepted columns: name, email, phone (or one email per line).",
+  "bulk-no-recipients-yet": "No recipients yet.",
+  "bulk-single-signer-only": "Independent bulk send requires a single-signer template.",
+  "bulk-send-summary": "{{created}} of {{total}} document(s) sent.",
+  "bulk-send-failed-count": "{{failed}} failed.",
+  "bulk-no-campaigns": "No bulk sends yet.",
+  "bulk-status-signed": "Signed",
+  "bulk-status-declined": "Declined",
+  "bulk-status-viewed": "Viewed",
+  "bulk-status-waiting": "Waiting",
+  "guest": "guest",
+  "pending": "Pending",
+  "declined": "Declined",
+  "signed-status": "Signed",
+  "signed-date": "Signed on",
+  "clear-all": "Clear all"
 }

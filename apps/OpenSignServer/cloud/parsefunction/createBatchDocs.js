@@ -42,16 +42,10 @@ function uuid() {
 const serverUrl = cloudServerUrl; //process.env.SERVER_URL;
 const appId = serverAppId;
 
-async function sendOwnerSummaryEmail({
-  ownerEmail,
-  ownerName,
-  total,
-  created,
-  failed,
-  failedList,
-}) {
+async function sendOwnerSummaryEmail({ ownerEmail, ownerName, total, created, failed, failedList }) {
   try {
-    const subject = `Bulk send finished: ${failed} of ${total} failed to create`;
+    if (!ownerEmail) return;
+    const subject = `Bulk send finished: ${created} of ${total} sent`;
 
     const failureHtml = failedList?.length
       ? `<ul>${failedList
@@ -72,11 +66,10 @@ async function sendOwnerSummaryEmail({
     `;
 
     const params = {
-      // keep provider selection consistent with your system; if you can’t decide, omit it.
       isbulksend: true,
       recipient: ownerEmail,
       subject,
-      from: ownerEmail, // or use a tenant/from address if required by your provider
+      from: ownerEmail,
       replyto: ownerEmail,
       html,
     };
@@ -90,12 +83,59 @@ async function sendOwnerSummaryEmail({
 async function deductcount(docsCount, extUserId) {
   try {
     if (extUserId) {
-      setDocumentCount(extUserId, docsCount);
+      await setDocumentCount(extUserId, docsCount);
     }
   } catch (err) {
     console.log('batchdoc deductcount error: ', err);
   }
 }
+
+async function createBulkSendCampaign({ token, type, firstDoc, extUserId, createdBy, total }) {
+  try {
+    const BulkSend = Parse.Object.extend('contracts_Bulksend');
+    const campaign = new BulkSend();
+    campaign.set('Name', firstDoc?.Name || 'Bulk send');
+    campaign.set('Token', token);
+    campaign.set('Type', type);
+    campaign.set('TotalRecipients', total);
+    if (firstDoc?.URL || firstDoc?.SignedUrl) {
+      campaign.set('SourceFileUrl', firstDoc?.URL || firstDoc?.SignedUrl);
+    }
+    if (extUserId) {
+      campaign.set('ExtUserPtr', {
+        __type: 'Pointer',
+        className: 'contracts_Users',
+        objectId: extUserId,
+      });
+    }
+    if (createdBy?.objectId) {
+      campaign.set('CreatedBy', {
+        __type: 'Pointer',
+        className: '_User',
+        objectId: createdBy.objectId,
+      });
+    }
+    if (firstDoc?.objectId) {
+      campaign.set('TemplateId', {
+        __type: 'Pointer',
+        className: 'contracts_Template',
+        objectId: firstDoc.objectId,
+      });
+    }
+    const acl = new Parse.ACL();
+    if (createdBy?.objectId) {
+      acl.setReadAccess(createdBy.objectId, true);
+      acl.setWriteAccess(createdBy.objectId, true);
+    }
+    campaign.setACL(acl);
+    await campaign.save(null, { useMasterKey: true });
+    return campaign;
+  } catch (e) {
+    console.log('batchdoc create campaign error: ', e?.message || e);
+    return null;
+  }
+}
+
 async function sendMail(document, publicUrl) {
   const baseUrl = new URL(publicUrl);
   const timeToCompleteDays = document?.TimeToCompleteDays || 15;
@@ -194,16 +234,27 @@ async function startBulkSendInBackground(userId, Documents, Ip, parseConfig, typ
   const resExt = await extCls.first({ useMasterKey: true });
   if (!resExt) throw new Parse.Error(Parse.Error.OBJECT_NOT_FOUND, 'User not found.');
 
-  const _resExt = JSON.parse(JSON.stringify(resExt));
+  const total = Documents.length;
+  const bulkSendToken = type === 'bulksend' ? uuid() : '';
 
-  // Build Parse /batch requests from your existing mapping (same as your current code)
+  let campaign = null;
+  if (type === 'bulksend') {
+    campaign = await createBulkSendCampaign({
+      token: bulkSendToken,
+      type,
+      firstDoc: Documents?.[0],
+      extUserId: resExt.id,
+      createdBy: Documents?.[0]?.CreatedBy,
+      total,
+    });
+  }
+
+  // Build Parse /batch requests from the document mapping
   const requests = Documents.map(x => {
     const Signers = x.Signers;
     const placeholders = x?.Placeholders?.filter(p => p?.Role !== 'prefill');
     const allSigner = placeholders
-      ?.map(
-        item => Signers?.find(e => item?.signerPtr?.objectId === e?.objectId) || item?.signerPtr
-      )
+      ?.map(item => Signers?.find(e => item?.signerPtr?.objectId === e?.objectId) || item?.signerPtr)
       .filter(signer => signer && Object.keys(signer).length > 0);
     const date = new Date();
     const isoDate = date.toISOString();
@@ -227,7 +278,7 @@ async function startBulkSendInBackground(userId, Documents, Ip, parseConfig, typ
         Note: x.Note,
         Description: x.Description,
         CreatedBy: x.CreatedBy,
-        SendinOrder: x.SendinOrder || true,
+        SendinOrder: !!x.SendinOrder,
         SendInOrderStrict: x.SendInOrderStrict || false,
         ExtUserPtr: {
           __type: 'Pointer',
@@ -256,7 +307,6 @@ async function startBulkSendInBackground(userId, Documents, Ip, parseConfig, typ
           objectId: y.objectId,
         })),
         ACL: Acl,
-        SentToOthers: true,
         RemindOnceInEvery: x.RemindOnceInEvery ? parseInt(x.RemindOnceInEvery) : 5,
         AutomaticReminders: x.AutomaticReminders || false,
         TimeToCompleteDays: x.TimeToCompleteDays ? parseInt(x.TimeToCompleteDays) : 15,
@@ -268,7 +318,7 @@ async function startBulkSendInBackground(userId, Documents, Ip, parseConfig, typ
         AllowModifications: x?.AllowModifications || false,
         ...(x?.SenderName ? { SenderName: x?.SenderName } : {}),
         ...(x?.SenderMail ? { SenderMail: x?.SenderMail } : {}),
-        ...(type === 'bulksend' ? { BulkSendToken: generateId(10) } : {}),
+        ...(type === 'bulksend' ? { BulkSendToken: bulkSendToken } : {}),
         ...(x?.SignatureType ? { SignatureType: x?.SignatureType } : {}),
         ...(x?.NotifyOnSignatures ? { NotifyOnSignatures: x?.NotifyOnSignatures } : {}),
         ...(x?.Bcc?.length > 0 ? { Bcc: x?.Bcc } : {}),
@@ -291,23 +341,78 @@ async function startBulkSendInBackground(userId, Documents, Ip, parseConfig, typ
     };
   });
 
-  if (requests?.length > 0) {
-    const newrequests = [requests?.[0]];
-    const response = await axios.post('batch', { requests: newrequests }, parseConfig);
-    // Handle the batch query response
-    // console.log('Batch query response:', response.data);
-    if (response.data && response.data.length > 0) {
-      const document = Documents?.[0];
-      const updateDocuments = {
-        ...document,
-        objectId: response.data[0]?.success?.objectId,
-        createdAt: response.data[0]?.success?.createdAt,
-      };
-      deductcount(response.data.length, resExt.id);
-      sendMail(updateDocuments, publicUrl); //sessionToken
-      return { total: 1, created: 1, failed: 0 };
+  const chunks = chunkArray(requests, BATCH_LIMIT);
+  const created = [];
+  const failedList = [];
+  let cursor = 0;
+
+  for (const chunk of chunks) {
+    let response;
+    try {
+      response = await axios.post('batch', { requests: chunk }, parseConfig);
+    } catch (err) {
+      const message = err?.response?.data?.error || err?.message || 'batch request failed';
+      for (let i = 0; i < chunk.length; i++) {
+        failedList.push({ index: cursor + i, error: message });
+      }
+      cursor += chunk.length;
+      continue;
+    }
+    const data = response?.data || [];
+    for (let i = 0; i < chunk.length; i++) {
+      const globalIdx = cursor + i;
+      const result = data[i];
+      if (result?.success?.objectId) {
+        created.push({
+          ...Documents[globalIdx],
+          objectId: result.success.objectId,
+          createdAt: result.success.createdAt,
+        });
+      } else {
+        const errMsg = result?.error?.error || result?.error || 'document creation failed';
+        failedList.push({ index: globalIdx, error: errMsg });
+      }
+    }
+    cursor += chunk.length;
+  }
+
+  const createdCount = created.length;
+  const failed = failedList.length;
+
+  if (createdCount > 0) {
+    await deductcount(createdCount, resExt.id);
+    if (publicUrl) {
+      await mapWithConcurrency(created, DOC_MAIL_CONCURRENCY, async document => {
+        try {
+          await sendMail(document, publicUrl);
+        } catch (e) {
+          console.log('batchdoc mail error: ', e?.message || e);
+        }
+      });
     }
   }
+
+  if (campaign) {
+    try {
+      campaign.set('TotalRecipients', createdCount);
+      await campaign.save(null, { useMasterKey: true });
+    } catch (e) {
+      console.log('batchdoc update campaign error: ', e?.message || e);
+    }
+  }
+
+  if (type === 'bulksend' && total > 1) {
+    sendOwnerSummaryEmail({
+      ownerEmail: resExt.get('Email'),
+      ownerName: resExt.get('Name'),
+      total,
+      created: createdCount,
+      failed,
+      failedList,
+    });
+  }
+
+  return { total, created: createdCount, failed, failedList, bulkSendToken };
 }
 
 export default async function createBatchDocs(request) {
@@ -332,13 +437,11 @@ export default async function createBatchDocs(request) {
 
     if (request?.user) {
       userId = request.user.id;
-      // return await batchQuery(request.user.id, Documents, Ip, parseConfig, type, publicUrl);
     }
     if (!userId) {
       throw new Parse.Error(Parse.Error.INVALID_SESSION_TOKEN, 'User is not authenticated.');
     }
 
-    // quicksend
     return await startBulkSendInBackground(userId, Documents, Ip, parseConfig, type, publicUrl);
   } catch (err) {
     console.log('createbatchdoc error: ', err);

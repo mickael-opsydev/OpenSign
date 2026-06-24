@@ -122,7 +122,8 @@
       "Team-update-successfully": "Équipe mise à jour avec succès.",
       "Users": "Utilisateurs"
     },
-    "Global SMTP": "SMTP Global"
+    "Global SMTP": "SMTP Global",
+    "Bulk sends": "Envois groupés"
   },
   "dashboard-card": {
     "Need your Signature": "Besoin de votre signature",
@@ -207,7 +208,8 @@
     "Reset password": "Réinitialiser le mot de passe",
     "View formdata": "Voir les données du formulaire",
     "Download all formdata": "Télécharger toutes les données du formulaire",
-    "API credits": "Crédits API"
+    "API credits": "Crédits API",
+    "Send independently": "Envoi indépendant"
   },
   "report-help": {
     "Draft Documents": "Il s'agit de documents que vous avez commencés mais que vous n'avez pas finalisés pour envoi.",
@@ -623,7 +625,7 @@
   "password-update-alert-2": "Votre mot de passe actuel est manquant ou incorrect.",
   "password-update-alert-3": "Votre mot de passe actuel est manquant ou incorrect.",
   "password-update-alert-4": "Votre mot de passe et votre mot de passe de confirmation ne correspondent pas.",
-  "current-password": "mot de passe actuel",
+  "current-password": "Mot de passe actuel",
   "new-password": "nouveau mot de passe",
   "confirm-password": "Confirmez le mot de passe",
   "file-alert-1": "La taille du fichier sélectionné est trop grande. Veuillez sélectionner un fichier inférieur à",
@@ -1565,13 +1567,34 @@
   "invalid-phone-format": "Veuillez sélectionner un indicatif pays et saisir un numéro valide (ex. +33612345678)",
   "change-phone": "Changer de numéro de téléphone",
   "change-phone-password-help": "Veuillez saisir votre mot de passe actuel pour vérifier votre identité.",
-  "current-password": "Mot de passe actuel",
-  "next": "Suivant",
   "change-phone-new-help": "Saisissez votre nouveau numéro de téléphone. Un SMS avec un code de vérification sera envoyé.",
   "country-code": "Indicatif pays",
   "confirm": "Confirmer",
   "change-phone-email-sent": "Un email de confirmation a été envoyé à votre adresse. Si vous n'êtes pas à l'origine de ce changement, veuillez contacter votre administrateur immédiatement.",
   "not-set": "Non défini",
   "current": "Actuel",
-  "change": "Modifier"
+  "change": "Modifier",
+  "send-independently": "Envoi indépendant",
+  "bulk-sends": "Envois groupés",
+  "bulk-no-new-recipients": "Aucun nouveau destinataire ajouté.",
+  "bulk-no-valid-emails": "Aucune adresse e-mail valide trouvée.",
+  "bulk-paste-emails": "Coller des e-mails",
+  "bulk-import-csv": "Importer un CSV",
+  "bulk-paste-placeholder": "Un destinataire par ligne : Nom <email@exemple.com> ou email@exemple.com",
+  "bulk-csv-hint": "Colonnes acceptées : nom, email, téléphone (ou une adresse e-mail par ligne).",
+  "bulk-no-recipients-yet": "Aucun destinataire pour le moment.",
+  "bulk-single-signer-only": "L'envoi indépendant nécessite un modèle à un seul signataire.",
+  "bulk-send-summary": "{{created}} document(s) sur {{total}} envoyé(s).",
+  "bulk-send-failed-count": "{{failed}} échec(s).",
+  "bulk-no-campaigns": "Aucun envoi groupé pour le moment.",
+  "bulk-status-signed": "Signé",
+  "bulk-status-declined": "Refusé",
+  "bulk-status-viewed": "Consulté",
+  "bulk-status-waiting": "En attente",
+  "guest": "invité",
+  "pending": "En attente",
+  "declined": "Refusé",
+  "signed-status": "Signés",
+  "signed-date": "Signé le",
+  "clear-all": "Tout effacer"
 }

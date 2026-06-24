@@ -36,6 +36,7 @@ const Preferences = lazyWithRetry(() => import("./pages/Preferences"));
 const Login = lazyWithRetry(() => import("./pages/Login"));
 const VerifyDocument = lazyWithRetry(() => import("./pages/VerifyDocument"));
 const EmailBuilder = lazyWithRetry(() => import("./pages/EmailBuilder"));
+const BulkSendReport = lazyWithRetry(() => import("./pages/BulkSendReport"));
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/legacy/build/pdf.worker.min.mjs`;
 const AppLoader = () => {
@@ -137,6 +138,7 @@ function App() {
                 path="/preferences"
                 element={<Lazy Page={Preferences} />}
               />
+              <Route path="/bulksend" element={<Lazy Page={BulkSendReport} />} />
             </Route>
             <Route path="/success" element={<DocSuccessPage />} />
             <Route path="/emailbuilder" element={<EmailBuilder />} />

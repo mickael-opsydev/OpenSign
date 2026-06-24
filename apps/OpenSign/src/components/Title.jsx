@@ -18,6 +18,7 @@ const TITLE_MAP = {
   "/report/UPr2Fm5WY3": "Declined",
   "/report/zNqBHXHsYH": "Expired",
   "/report/contacts": "Contactbook",
+  "/bulksend": "bulk-sends",
   "/drive": "Drive",
   "/managesign": "My Signature",
   "/preferences": "Preferences",

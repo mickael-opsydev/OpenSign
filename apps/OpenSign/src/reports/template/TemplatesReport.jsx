@@ -21,6 +21,7 @@ import {
   defaultMailSubject
 } from "../../constant/Utils";
 import BulkSendUi from "../../components/bulksend/BulkSendUi";
+import BulkSendIndependent from "../../components/bulksend/BulkSendIndependent";
 import Loader from "../../primitives/Loader";
 import { serverUrl_fn } from "../../constant/appinfo";
 import { Trans, useTranslation } from "react-i18next";
@@ -78,6 +79,7 @@ const TemplatesReport = (props) => {
   const [userDetails, setUserDetails] = useState({});
   const [isNextStep, setIsNextStep] = useState({});
   const [isBulkSend, setIsBulkSend] = useState({});
+  const [isBulkSendIndependent, setIsBulkSendIndependent] = useState({});
   const [templateDetails, setTemplateDetails] = useState({});
   const [placeholders, setPlaceholders] = useState([]);
   const [isLoader, setIsLoader] = useState({});
@@ -348,6 +350,8 @@ const TemplatesReport = (props) => {
       setIsResendMail({ [item.objectId]: true });
     } else if (act.action === "bulksend") {
       handleBulkSend(item);
+    } else if (act.action === "bulksendindependent") {
+      handleBulkSendIndependent(item);
     } else if (act.action === "sharewithteam") {
       if (item?.SharedWith && item?.SharedWith.length > 0) {
         // below code is used to get existing sharewith teams and formated them as per react-select
@@ -788,6 +792,31 @@ const TemplatesReport = (props) => {
     }
   };
 
+
+  // `handleBulkSendIndependent` opens the independent bulk send modal and
+  // fetches the template so each recipient gets their own independent document.
+  const handleBulkSendIndependent = async (template) => {
+    setIsBulkSendIndependent({ [template.objectId]: true });
+    setIsLoader({ [template.objectId]: true });
+    try {
+      const axiosRes = await fetchTemplate(template.objectId);
+      const templateRes = axiosRes.data && axiosRes.data.result;
+      const tenantSignTypes = await fetchTenantDetails();
+      const docSignTypes = templateRes?.SignatureType || signatureTypes;
+      const updatedSignatureType = await handleSignatureType(
+        tenantSignTypes,
+        docSignTypes
+      );
+      setSignatureType(updatedSignatureType);
+      setPlaceholders(templateRes?.Placeholders);
+      setTemplateDetails(templateRes);
+      setIsLoader({});
+    } catch (err) {
+      console.error("fetch template in independent bulk modal err", err);
+      setIsBulkSendIndependent({});
+      showAlert("danger", t("something-went-wrong-mssg"));
+    }
+  };
 
   // `handleShareWith` is used to save teams in sharedWith field
   const handleShareWith = utils.withSessionValidation(async (e, template) => {
@@ -1427,6 +1456,47 @@ const TemplatesReport = (props) => {
                                   Placeholders={placeholders}
                                   item={templateDetails}
                                   handleClose={handleQuickSendClose}
+                                  signatureType={signatureType}
+                                />
+                              )}
+                            </>
+                          )}
+                        </ModalUi>
+                      )}
+                      {isBulkSendIndependent[item.objectId] && (
+                        <ModalUi
+                          isOpen
+                          showScrollBar
+                          title={t("send-independently")}
+                          reduceWidth={"md:min-w-[60%]"}
+                          handleClose={() => setIsBulkSendIndependent({})}
+                        >
+                          {isLoader[item.objectId] ? (
+                            <div className="w-full h-[100px] flex justify-center items-center z-30">
+                              <Loader />
+                            </div>
+                          ) : (
+                            <>
+                              {!extClass?.[0]?.UserId?.emailVerified ? (
+                                <div className="mx-[20px] mt-[15px] mb-[20px]">
+                                  <Trans
+                                    i18nKey="email-not-verified-send"
+                                    components={{
+                                      1: (
+                                        <Link
+                                          to="/profile"
+                                          className="text-blue-700 underline cursor-pointer"
+                                        />
+                                      )
+                                    }}
+                                  />
+                                </div>
+                              ) : (
+                                <BulkSendIndependent
+                                  Placeholders={placeholders}
+                                  item={templateDetails}
+                                  sourceType="template"
+                                  handleClose={() => setIsBulkSendIndependent({})}
                                   signatureType={signatureType}
                                 />
                               )}

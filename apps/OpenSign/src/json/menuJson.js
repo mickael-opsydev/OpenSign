@@ -138,6 +138,14 @@ const sidebarList = [
     ]
   },
   {
+    icon: "fa-light fa-users",
+    title: "Bulk sends",
+    target: "_self",
+    pageType: "",
+    description: "",
+    objectId: "bulksend"
+  },
+  {
     icon: "fa-light fa-address-book",
     title: "Contactbook",
     target: "_self",
