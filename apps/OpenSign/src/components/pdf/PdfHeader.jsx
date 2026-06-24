@@ -331,13 +331,15 @@ function Header(props) {
                       )
                     )}
                     {props?.isPlaceholder && props?.onBulkSend && (
-                      <div
+                      <button
+                        type="button"
                         onClick={() => props.onBulkSend()}
-                        className="op-link op-link-primary no-underline font-[650] text-[14px] ml-3"
+                        className="op-btn op-btn-sm op-btn-secondary ml-3"
                         title={t("send-independently")}
                       >
+                        <i className="fa-light fa-users mr-1"></i>
                         {t("send-independently")}
-                      </div>
+                      </button>
                     )}
                     <input
                       type="file"
