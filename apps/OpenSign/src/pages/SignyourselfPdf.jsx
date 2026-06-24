@@ -125,7 +125,7 @@ function SignYourSelf() {
   const [isPageCopy, setIsPageCopy] = useState(false);
   const [otpLoader, setOtpLoader] = useState(false);
   const [smsPhoneReadOnly, setSmsPhoneReadOnly] = useState(false);
-  const [countryCode, setCountryCode] = useState("");
+  const [countryCode, setCountryCode] = useState("+33");
   const [tourPageNum, setTourPageNum] = useState(0);
   const [isEmailOTPVerified, setIsEmailOTPVerified] = useState(false);
   const [isVerifyModal, setIsVerifyModal] = useState(false);

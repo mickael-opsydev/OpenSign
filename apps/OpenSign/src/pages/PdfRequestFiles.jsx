@@ -137,7 +137,7 @@ function PdfRequestFiles(
   const [otp, setOtp] = useState("");
   const [otpLoader, setOtpLoader] = useState(false);
   const [smsPhoneReadOnly, setSmsPhoneReadOnly] = useState(false);
-  const [countryCode, setCountryCode] = useState("");
+  const [countryCode, setCountryCode] = useState("+33");
   const [isEmailOTPVerified, setIsEmailOTPVerified] = useState(false);
   const [isVerifyModal, setIsVerifyModal] = useState(false);
   const [isSigned, setIsSigned] = useState(false);
