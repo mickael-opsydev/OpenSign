@@ -298,7 +298,7 @@ function GuestLogin() {
                   onInput={(e) => e.target.setCustomValidity("")}
                   required
                   type="tel"
-                  pattern="[0-9]{4}"
+                  pattern="[0-9]{8}"
                   className="w-full op-input op-input-bordered op-input-sm focus:outline-none hover:border-base-content text-xs"
                   placeholder={otpType === "sms" ? t("otp-sms-placeholder") : t("otp-placeholder")}
                   value={OTP}

@@ -110,6 +110,32 @@ export const config = {
   appId: serverAppId,
   logLevel: ['error'],
   maxLimit: 500,
+  rateLimit: [
+    {
+      requestPath: '/functions/AuthLoginAsMail',
+      requestTimeWindow: 60 * 1000,
+      requestCount: 10,
+      errorResponseMessage: 'Too many attempts, please try again later.',
+    },
+    {
+      requestPath: '/functions/SendSMSOTP',
+      requestTimeWindow: 10 * 60 * 1000,
+      requestCount: 5,
+      errorResponseMessage: 'Too many OTP requests, please try again later.',
+    },
+    {
+      requestPath: '/functions/SendOTPMailV1',
+      requestTimeWindow: 10 * 60 * 1000,
+      requestCount: 5,
+      errorResponseMessage: 'Too many OTP requests, please try again later.',
+    },
+    {
+      requestPath: '/functions/loginuser',
+      requestTimeWindow: 60 * 1000,
+      requestCount: 20,
+      errorResponseMessage: 'Too many login attempts, please try again later.',
+    },
+  ],
   maxUploadSize: '100mb',
   masterKey: process.env.MASTER_KEY, //Add your master key here. Keep it secret!
   masterKeyIps: ['0.0.0.0/0', '::/0'], // '::1'

@@ -22,7 +22,7 @@ async function getDocument(docId) {
 }
 async function sendMailOTPv1(request) {
   try {
-    let code = Math.floor(1000 + Math.random() * 9000);
+    let code = Math.floor(10000000 + Math.random() * 90000000);
     let email = request.params.email;
     let TenantId = request.params.TenantId ? request.params.TenantId : undefined;
     const AppName = appName;
@@ -49,13 +49,19 @@ async function sendMailOTPv1(request) {
           useMasterKey: true,
         });
         updateOtp.set('OTP', code);
-        updateOtp.save(null, { useMasterKey: true });
+        updateOtp.set('GeneratedAt', new Date());
+        updateOtp.set('Attempts', 0);
+        updateOtp.set('Used', false);
+        await updateOtp.save(null, { useMasterKey: true });
       } else {
         const otpClass = Parse.Object.extend('defaultdata_Otp');
         const newOtpQuery = new otpClass();
         newOtpQuery.set('OTP', code);
         newOtpQuery.set('Email', email);
         newOtpQuery.set('TenantId', TenantId);
+        newOtpQuery.set('GeneratedAt', new Date());
+        newOtpQuery.set('Attempts', 0);
+        newOtpQuery.set('Used', false);
         await newOtpQuery.save(null, { useMasterKey: true });
       }
 

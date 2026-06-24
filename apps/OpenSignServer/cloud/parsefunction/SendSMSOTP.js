@@ -31,7 +31,7 @@ async function sendSMSOTP(request) {
       }
     }
 
-    const code = Math.floor(1000 + Math.random() * 9000);
+    const code = Math.floor(10000000 + Math.random() * 90000000);
     const message = `Your ${AppName} verification code is: ${code}`;
 
     const userId = request.user ? request.user.id : null;
@@ -39,6 +39,9 @@ async function sendSMSOTP(request) {
     if (existingOtp) {
       existingOtp.set('OTP', code);
       existingOtp.set('Phone', phone);
+      existingOtp.set('GeneratedAt', new Date());
+      existingOtp.set('Attempts', 0);
+      existingOtp.set('Used', false);
       if (userId) existingOtp.set('UserId', userId);
       await existingOtp.save(null, { useMasterKey: true });
     } else {
@@ -47,6 +50,9 @@ async function sendSMSOTP(request) {
       newOtp.set('OTP', code);
       newOtp.set('Phone', phone);
       newOtp.set('TenantId', TenantId);
+      newOtp.set('GeneratedAt', new Date());
+      newOtp.set('Attempts', 0);
+      newOtp.set('Used', false);
       if (userId) newOtp.set('UserId', userId);
       await newOtp.save(null, { useMasterKey: true });
     }

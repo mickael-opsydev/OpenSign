@@ -1,5 +1,9 @@
 import axios from 'axios';
 import { cloudServerUrl, serverAppId } from '../../Utils.js';
+
+const MAX_OTP_ATTEMPTS = 5;
+const OTP_TTL_MS = 10 * 60 * 1000;
+
 async function AuthLoginAsMail(request) {
   try {
     const serverUrl = cloudServerUrl;
@@ -23,6 +27,18 @@ async function AuthLoginAsMail(request) {
 
     if (res !== undefined) {
       const resOtp = res.get('OTP');
+      const generatedAt = res.get('GeneratedAt') || res.updatedAt || res.createdAt;
+      const attempts = res.get('Attempts') || 0;
+
+      if (res.get('Used')) {
+        return 'Otp expired';
+      }
+      if (generatedAt && Date.now() - new Date(generatedAt).getTime() > OTP_TTL_MS) {
+        return 'Otp expired';
+      }
+      if (attempts >= MAX_OTP_ATTEMPTS) {
+        return 'Too many attempts';
+      }
 
       if (resOtp === otp) {
         try {
@@ -37,6 +53,8 @@ async function AuthLoginAsMail(request) {
             if (result?.objectId) {
               res.set('UserId', result.objectId);
             }
+            res.set('Used', true);
+            res.set('Attempts', 0);
             await res.save(null, { useMasterKey: true });
             if (result && typeof result === 'object') {
               result.otpValidatedAt = validatedAt.toISOString();
@@ -130,6 +148,8 @@ async function AuthLoginAsMail(request) {
           return saved;
         }
       } else {
+        res.increment('Attempts');
+        await res.save(null, { useMasterKey: true });
         return 'Invalid Otp';
       }
     } else {
